@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS citas (
   usuario_id INT UNSIGNED NOT NULL,
   fecha DATE NOT NULL,
   hora_inicio TIME NOT NULL,
+  servicio ENUM('gestion_tributaria', 'contabilidad_financiera', 'gestion_remuneraciones') NULL,
   estado ENUM('reservada', 'cancelada') NOT NULL DEFAULT 'reservada',
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   activo TINYINT

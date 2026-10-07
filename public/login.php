@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 abrirPagina('Entrar');
 ?>
-<section class="tarjeta">
+<section>
   <h1>Entrar</h1>
   <p>Los clientes y Servicios Contables A&amp;Z usan el mismo formulario. La agenda se abre según la cuenta.</p>
   <?php erroresDe($errores); ?>

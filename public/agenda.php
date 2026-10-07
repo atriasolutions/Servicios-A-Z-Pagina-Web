@@ -97,6 +97,7 @@ abrirPagina('Agenda');
           <strong><?= e($bloque['etiqueta']) ?></strong>
           <?php if ($bloque['estado'] === 'reservado'): ?>
             <span class="estado">Reservado por <?= e((string) $bloque['cliente']) ?></span>
+            <span><?= e(etiquetaServicio($bloque['servicio'] ?? null)) ?></span>
             <?php if ($bloque['telefono'] || $bloque['email']): ?>
               <span class="nota">
                 <?= e((string) $bloque['telefono']) ?>

@@ -48,6 +48,7 @@ abrirPagina('Mis asesorías');
           <div>
             <strong><?= e(fechaLarga($cita['inicio'])) ?></strong>
             <span><?= e(etiquetaBloque($cita['hora_inicio'])) ?></span>
+            <span><?= e(etiquetaServicio($cita['servicio'] ?? null)) ?></span>
             <span class="estado">Reservada</span>
           </div>
           <form method="post" action="mis-citas.php" data-confirmar="¿Cancelar esta asesoría?">
@@ -68,6 +69,7 @@ abrirPagina('Mis asesorías');
           <div>
             <strong><?= e(fechaLarga($cita['inicio'])) ?></strong>
             <span><?= e(etiquetaBloque($cita['hora_inicio'])) ?></span>
+            <span><?= e(etiquetaServicio($cita['servicio'] ?? null)) ?></span>
             <span class="estado"><?= $cita['estado'] === 'reservada' ? 'Realizada' : 'Cancelada' ?></span>
           </div>
         </li>

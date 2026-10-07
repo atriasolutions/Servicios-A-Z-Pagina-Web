@@ -66,6 +66,30 @@ function textoHorario(): string
     return 'Cada asesoría dura ' . $minutos . ' minutos, todos los días, de ' . $desde . ' a ' . $hasta . '.';
 }
 
+// Trazos dibujados para este sitio. No provienen de un set de terceros.
+function icono(string $nombre): string
+{
+    $trazos = [
+        'inicio' => '<path d="M2.2 16.5 5.6 3.5 9 16.5M3.5 11.6h4.2M11.2 4h6.6L11.2 16.5h6.6"/>',
+        'entrar' => '<rect x="8" y="4" width="8.5" height="12" rx="2.2"/><path d="M3 10h7"/>',
+        'cuenta' => '<rect x="2.5" y="6" width="10" height="11" rx="2.2"/><path d="M16 2.5v4M14 4.5h4"/>',
+        'horarios' => '<rect x="3" y="3.6" width="14" height="2.6" rx="1.1"/>'
+            . '<rect x="3" y="8.7" width="9.2" height="2.6" rx="1.1"/>'
+            . '<rect class="marca-llena" x="13.1" y="8.7" width="3.9" height="2.6" rx="1.1"/>'
+            . '<rect x="3" y="13.8" width="14" height="2.6" rx="1.1"/>',
+        'asesorias' => '<circle cx="10" cy="4.5" r="1.7"/><path d="M10 6.2v7.6"/><circle cx="10" cy="15.5" r="1.7"/>',
+        'agenda' => '<rect x="3.2" y="3.2" width="5.6" height="5.6" rx="1.3"/>'
+            . '<rect class="marca-llena" x="11.2" y="3.2" width="5.6" height="5.6" rx="1.3"/>'
+            . '<rect x="3.2" y="11.2" width="5.6" height="5.6" rx="1.3"/>'
+            . '<rect x="11.2" y="11.2" width="5.6" height="5.6" rx="1.3"/>',
+        'salir' => '<rect x="3" y="4" width="8.5" height="12" rx="2.2"/><path d="M10 10h7"/>',
+    ];
+
+    return '<svg class="icono" viewBox="0 0 20 20" aria-hidden="true" focusable="false">'
+        . ($trazos[$nombre] ?? '')
+        . '</svg>';
+}
+
 function abrirPagina(string $titulo): void
 {
     $usuario = usuarioActual();
@@ -79,34 +103,34 @@ function abrirPagina(string $titulo): void
     echo '<title>' . e($titulo) . ' · ' . e($nombreSitio) . '</title>';
     echo '<link rel="stylesheet" href="css/estilos.css">';
     echo '</head><body>';
-    echo '<header class="cabecera">';
+    echo '<div class="marco">';
     echo '<a class="marca" href="index.php">' . e($nombreSitio) . '</a>';
-    echo '<nav class="nav" aria-label="Principal">';
+    echo '<nav class="menu" aria-label="Principal">';
 
-    $enlace = static function (string $archivo, string $texto) use ($actual): void {
+    $enlace = static function (string $archivo, string $texto, string $dibujar) use ($actual): void {
         $marca = $actual === $archivo ? ' aria-current="page"' : '';
-        echo '<a href="' . e($archivo) . '"' . $marca . '>' . e($texto) . '</a>';
+        echo '<a href="' . e($archivo) . '"' . $marca . '>' . icono($dibujar) . '<span>' . e($texto) . '</span></a>';
     };
 
-    $enlace('index.php', 'Inicio');
+    $enlace('index.php', 'Inicio', 'inicio');
     if ($usuario && $usuario['rol'] === 'cliente') {
-        $enlace('horarios.php', 'Horarios');
-        $enlace('mis-citas.php', 'Mis asesorías');
+        $enlace('horarios.php', 'Horarios', 'horarios');
+        $enlace('mis-citas.php', 'Mis asesorías', 'asesorias');
     } elseif ($usuario && $usuario['rol'] === 'anfitrion') {
-        $enlace('agenda.php', 'Agenda');
+        $enlace('agenda.php', 'Agenda', 'agenda');
     } else {
-        $enlace('login.php', 'Entrar');
-        $enlace('registro.php', 'Crear cuenta');
+        $enlace('login.php', 'Entrar', 'entrar');
+        $enlace('registro.php', 'Crear cuenta', 'cuenta');
     }
 
     if ($usuario) {
         echo '<form method="post" action="logout.php">';
         echo campoCsrf();
-        echo '<button type="submit">Salir</button>';
+        echo '<button type="submit">' . icono('salir') . '<span>Salir</span></button>';
         echo '</form>';
     }
 
-    echo '</nav></header>';
+    echo '</nav>';
     echo '<main class="contenido">';
 
     if ($aviso) {
@@ -117,7 +141,7 @@ function abrirPagina(string $titulo): void
 
 function cerrarPagina(): void
 {
-    echo '</main>';
+    echo '</main></div>';
     echo '<script src="js/agenda.js"></script>';
     echo '</body></html>';
 }

@@ -1,16 +1,14 @@
 :root {
-  --fondo: #f3efe6;
-  --papel: #fffdf8;
-  --tinta: #1d2430;
-  --suave: #5e6874;
-  --linea: #e4d9c8;
-  --acento: #1b6b58;
-  --acento-oscuro: #124a3d;
-  --acento-claro: #e5f3ee;
+  --tinta: #1a242c;
+  --suave: #4e5c68;
+  --acento: #3d5c73;
+  --acento-oscuro: #2a4254;
+  --acento-fin: #6d8ea3;
   --error: #8d2e2e;
-  --error-fondo: #f8e8e6;
-  --aviso-fondo: #f6e7c8;
-  --sombra: 0 12px 32px rgba(48, 36, 18, 0.06);
+  --vidrio: rgba(244, 247, 250, 0.5);
+  --borde: rgba(255, 255, 255, 0.5);
+  --sombra: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+  --radio: 16px;
   color-scheme: light;
 }
 
@@ -19,96 +17,162 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(27, 107, 88, 0.08), transparent 28rem),
-    var(--fondo);
+  background-color: #1a242c;
+  background-image:
+    linear-gradient(rgba(244, 247, 250, 0.18), rgba(26, 36, 44, 0.12)),
+    url("../img/fondo.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--tinta);
-  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   line-height: 1.5;
 }
 
-h1, h2, .marca, button, .boton, input, .dia-link, .nav a {
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+h1, h2, .marca, button, .boton, input, .dia-link, .menu a {
+  font-family: inherit;
 }
 
 h1 {
   margin: 0 0 0.4rem;
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  line-height: 1.15;
+  font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+  line-height: 1.2;
   letter-spacing: -0.03em;
 }
 
 h2 {
-  margin: 1.5rem 0 0.75rem;
-  font-size: 1.25rem;
+  margin: 1.25rem 0 0.75rem;
+  font-size: 1.15rem;
 }
 
 p { margin: 0 0 1rem; }
 
 a { color: var(--acento-oscuro); }
 
-.cabecera {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.vidrio,
+.marca,
+.menu a,
+.menu button,
+.contenido,
+.dia-link,
+.bloque,
+.franja,
+.lista-citas li,
+.aviso {
+  background: var(--vidrio);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.marco {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--linea);
-  background: rgba(255, 253, 248, 0.92);
-  position: sticky;
-  top: 0;
+  width: min(1100px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 3rem;
 }
 
 .marca {
+  grid-column: 1 / -1;
+  padding: 1.15rem 1.25rem;
   color: var(--tinta);
   font-weight: 700;
-  text-decoration: none;
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+  line-height: 1.15;
   letter-spacing: -0.02em;
-}
-
-.nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.9rem;
-}
-
-.nav a {
-  color: var(--tinta);
   text-decoration: none;
+}
+
+.menu { display: contents; }
+
+.menu form { display: contents; }
+
+.icono {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icono .marca-llena {
+  fill: currentColor;
+  stroke: none;
+}
+
+.menu a,
+.menu button {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-}
-
-.nav a[aria-current="page"] {
-  color: var(--acento-oscuro);
-  font-weight: 700;
-}
-
-.nav button {
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--suave);
-  cursor: pointer;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.75rem 0.9rem;
+  color: var(--tinta);
   font: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu a[aria-current="page"] {
+  font-weight: 700;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--vidrio), var(--vidrio)) padding-box,
+    linear-gradient(135deg, var(--acento), var(--acento-fin)) border-box;
 }
 
 .contenido {
-  width: min(960px, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 2rem 0 4rem;
+  grid-column: 1 / -1;
+  padding: 1.5rem 1.35rem 1.75rem;
 }
 
-.hero {
-  padding: 1rem 0 0.5rem;
+.hero { padding: 0.15rem 0 0; }
+
+.tramites {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.tramite {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.05rem;
+  color: var(--tinta);
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(244, 247, 250, 0.42);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.tramite.activo {
+  font-weight: 700;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(rgba(244, 247, 250, 0.55), rgba(244, 247, 250, 0.55)) padding-box,
+    linear-gradient(135deg, var(--acento), var(--acento-fin)) border-box;
 }
 
 .sobre {
   margin: 0 0 0.5rem;
   color: var(--acento);
-  font-family: "Segoe UI", sans-serif;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -122,9 +186,7 @@ a { color: var(--acento-oscuro); }
   align-items: center;
 }
 
-.boton, .nav button, .bloque {
-  cursor: pointer;
-}
+.boton, .menu button, .bloque { cursor: pointer; }
 
 .boton {
   display: inline-flex;
@@ -133,50 +195,40 @@ a { color: var(--acento-oscuro); }
   min-height: 44px;
   padding: 0.55rem 1.1rem;
   border-radius: 999px;
-  border: 2px solid var(--acento);
-  background: var(--acento);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--acento), var(--acento-fin));
   color: #f4fbf8;
   font-weight: 700;
   text-decoration: none;
 }
 
-.boton.secundario {
-  background: transparent;
-  color: var(--acento-oscuro);
-}
-
+.boton.secundario,
 .boton.peligro {
-  background: transparent;
-  color: var(--error);
-  border-color: var(--error);
-}
-
-.tarjeta, .franja {
-  background: var(--papel);
-  border: 1px solid var(--linea);
-  border-radius: 16px;
+  background: rgba(244, 245, 247, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--borde);
   box-shadow: var(--sombra);
 }
 
-.nota, .estado {
-  color: var(--suave);
-  font-family: "Segoe UI", sans-serif;
+.boton.secundario { color: var(--acento-oscuro); }
+
+.boton.peligro {
+  color: var(--error);
+  border-color: rgba(141, 46, 46, 0.35);
 }
 
-.tarjeta {
-  max-width: 32rem;
-  padding: 1.25rem;
-}
+.nota, .estado { color: var(--suave); }
 
 .formulario {
   display: grid;
   gap: 0.9rem;
+  max-width: 32rem;
 }
 
 .formulario label {
   display: grid;
   gap: 0.35rem;
-  font-family: "Segoe UI", sans-serif;
   font-weight: 600;
 }
 
@@ -186,27 +238,25 @@ input[type="password"],
 input[type="tel"] {
   min-height: 44px;
   width: 100%;
-  border: 1px solid var(--linea);
+  border: 1px solid var(--borde);
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.55);
   color: var(--tinta);
   font: inherit;
 }
 
 .aviso {
   padding: 0.8rem 1rem;
-  border-radius: 12px;
-  font-family: "Segoe UI", sans-serif;
 }
 
 .aviso.ok {
-  background: var(--acento-claro);
+  background: rgba(214, 226, 234, 0.55);
   color: var(--acento-oscuro);
 }
 
 .aviso.error {
-  background: var(--error-fondo);
+  background: rgba(248, 232, 230, 0.55);
   color: var(--error);
 }
 
@@ -216,30 +266,28 @@ input[type="tel"] {
 }
 
 .dias {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.25rem 0 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.7rem;
+  padding: 0.15rem 0 0.35rem;
 }
 
 .dia-link {
-  flex: 0 0 auto;
-  min-width: 4.5rem;
   min-height: 44px;
   display: grid;
   justify-items: center;
+  align-content: center;
   gap: 0.1rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--linea);
-  border-radius: 12px;
-  background: var(--papel);
+  padding: 0.5rem 0.45rem;
   color: var(--tinta);
   text-decoration: none;
 }
 
 .dia-link.activo {
-  border-color: var(--acento);
-  background: var(--acento-claro);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(rgba(244, 245, 247, 0.72), rgba(244, 245, 247, 0.72)) padding-box,
+    linear-gradient(135deg, var(--acento), var(--acento-fin)) border-box;
 }
 
 .dia-link span, .dia-link small {
@@ -261,10 +309,6 @@ input[type="tel"] {
   align-items: center;
   justify-content: center;
   min-height: 52px;
-  border: 2px solid var(--linea);
-  border-radius: 12px;
-  background: var(--papel);
-  font-family: "Segoe UI", sans-serif;
   font-weight: 700;
 }
 
@@ -278,8 +322,11 @@ input[type="tel"] {
 .bloque:focus-within,
 .bloque.elegido,
 .bloque:has(input:checked) {
-  border-color: var(--acento);
-  background: var(--acento-claro);
+  font-weight: 800;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(rgba(244, 245, 247, 0.78), rgba(244, 245, 247, 0.78)) padding-box,
+    linear-gradient(135deg, var(--acento), var(--acento-fin)) border-box;
 }
 
 .grilla .boton { grid-column: 1 / -1; justify-self: start; }
@@ -302,8 +349,17 @@ input[type="tel"] {
 
 .franja div { display: grid; gap: 0.15rem; }
 
-.franja.reservado { border-color: #b7d7cc; }
-.franja.cerrado, .franja.pasado { background: #f7f4ee; }
+.franja.reservado {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(rgba(214, 226, 234, 0.55), rgba(214, 226, 234, 0.55)) padding-box,
+    linear-gradient(135deg, var(--acento), var(--acento-fin)) border-box;
+}
+
+.franja.cerrado,
+.franja.pasado {
+  background: rgba(244, 245, 247, 0.38);
+}
 
 .lista-citas {
   list-style: none;
@@ -319,9 +375,6 @@ input[type="tel"] {
   gap: 1rem;
   align-items: center;
   padding: 0.9rem 1rem;
-  background: var(--papel);
-  border: 1px solid var(--linea);
-  border-radius: 16px;
 }
 
 .lista-citas li div { display: grid; }
@@ -332,10 +385,15 @@ input[type="tel"] {
 }
 
 @media (max-width: 700px) {
-  .cabecera, .franja, .lista-citas li, .encabezado-dia {
+  .marco {
+    grid-template-columns: repeat(2, 1fr);
+    width: min(1100px, calc(100% - 1.5rem));
+  }
+
+  .tramites { grid-template-columns: 1fr; }
+
+  .franja, .lista-citas li, .encabezado-dia {
     flex-direction: column;
     align-items: stretch;
   }
-
-  .contenido { width: min(960px, calc(100% - 1.5rem)); }
 }

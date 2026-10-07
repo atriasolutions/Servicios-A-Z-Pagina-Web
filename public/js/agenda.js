@@ -31,7 +31,8 @@
     }
     var etiqueta = elegido.closest(".bloque").querySelector("span").textContent.trim();
     var dia = reserva.getAttribute("data-dia") || "día elegido";
-    if (!window.confirm("¿Reservar la asesoría del " + dia + ", " + etiqueta + "?")) {
+    var tramite = reserva.getAttribute("data-servicio") || "la asesoría";
+    if (!window.confirm("¿Reservar " + tramite + " para el " + dia + ", " + etiqueta + "?")) {
       evento.preventDefault();
     }
   });

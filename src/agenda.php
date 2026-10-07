@@ -95,7 +95,7 @@ function cargarPeriodo(): array
 
     $citas = [];
     $consulta = base()->prepare(
-        'SELECT c.id, c.fecha, c.hora_inicio, c.usuario_id, u.nombre, u.telefono, u.email
+        'SELECT c.id, c.fecha, c.hora_inicio, c.servicio, c.usuario_id, u.nombre, u.telefono, u.email
          FROM citas c
          INNER JOIN usuarios u ON u.id = c.usuario_id
          WHERE c.estado = \'reservada\' AND c.fecha BETWEEN ? AND ?'
@@ -138,14 +138,40 @@ function bloquesDelDia(DateTimeImmutable $fecha, array $periodo): array
             'cliente' => $cita['nombre'] ?? null,
             'telefono' => $cita['telefono'] ?? null,
             'email' => $cita['email'] ?? null,
+            'servicio' => $cita['servicio'] ?? null,
         ];
     }
 
     return $bloques;
 }
 
-function reservarBloque(int $usuarioId, string $fecha, string $hora): ?string
+function servicios(): array
 {
+    return [
+        'gestion_tributaria' => 'Gestión tributaria',
+        'contabilidad_financiera' => 'Contabilidad financiera',
+        'gestion_remuneraciones' => 'Gestión de remuneraciones',
+    ];
+}
+
+function servicioValido(?string $clave): ?string
+{
+    $clave = (string) $clave;
+
+    return array_key_exists($clave, servicios()) ? $clave : null;
+}
+
+function etiquetaServicio(?string $clave): string
+{
+    return servicios()[$clave] ?? 'Asesoría';
+}
+
+function reservarBloque(int $usuarioId, string $fecha, string $hora, string $servicio): ?string
+{
+    if (servicioValido($servicio) === null) {
+        return 'Elige un tipo de trámite.';
+    }
+
     if (!fechaEnAgenda($fecha) || !normalizarHora($hora)) {
         return 'Ese horario no está disponible.';
     }
@@ -180,10 +206,10 @@ function reservarBloque(int $usuarioId, string $fecha, string $hora): ?string
         }
 
         $alta = $pdo->prepare(
-            'INSERT INTO citas (usuario_id, fecha, hora_inicio, estado)
-             VALUES (?, ?, ?, \'reservada\')'
+            'INSERT INTO citas (usuario_id, fecha, hora_inicio, servicio, estado)
+             VALUES (?, ?, ?, ?, \'reservada\')'
         );
-        $alta->execute([$usuarioId, $fecha, $hora]);
+        $alta->execute([$usuarioId, $fecha, $hora, $servicio]);
         $pdo->commit();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {
@@ -331,7 +357,7 @@ function abrirDia(string $fecha): string
 function citasDelCliente(int $usuarioId): array
 {
     $consulta = base()->prepare(
-        'SELECT id, fecha, hora_inicio, estado
+        'SELECT id, fecha, hora_inicio, servicio, estado
          FROM citas
          WHERE usuario_id = ?
          ORDER BY fecha ASC, hora_inicio ASC'

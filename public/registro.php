@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 abrirPagina('Crear cuenta');
 ?>
-<section class="tarjeta">
+<section>
   <h1>Crear cuenta</h1>
   <p>Con esta cuenta reservas una asesoría de servicios contables en un horario libre.</p>
   <?php erroresDe($errores); ?>
