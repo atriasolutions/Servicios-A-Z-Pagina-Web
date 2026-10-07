@@ -1,0 +1,24 @@
+---
+description: PDO, sesiones y CSRF en PHP
+globs: **/*.php
+alwaysApply: false
+---
+
+# MySQL y sesión
+
+- Conexión con PDO y `ATTR_EMULATE_PREPARES` en false.
+- Consultas con parámetros. Nunca concatenar datos del usuario en el SQL.
+- Contraseñas con `password_hash` y `password_verify`.
+- Sesión con cookie `httponly` y `samesite` Lax. Regenerar el id al entrar.
+- Cada formulario POST incluye y valida el token CSRF.
+- Al imprimir texto en HTML, usar `htmlspecialchars`.
+- No mostrar el mensaje crudo de PDO al visitante.
+
+```php
+// MAL
+$sql = "SELECT * FROM usuarios WHERE email = '$email'";
+
+// BIEN
+$consulta = $pdo->prepare('SELECT id FROM usuarios WHERE email = ?');
+$consulta->execute([$email]);
+```

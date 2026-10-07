@@ -1,0 +1,341 @@
+:root {
+  --fondo: #f3efe6;
+  --papel: #fffdf8;
+  --tinta: #1d2430;
+  --suave: #5e6874;
+  --linea: #e4d9c8;
+  --acento: #1b6b58;
+  --acento-oscuro: #124a3d;
+  --acento-claro: #e5f3ee;
+  --error: #8d2e2e;
+  --error-fondo: #f8e8e6;
+  --aviso-fondo: #f6e7c8;
+  --sombra: 0 12px 32px rgba(48, 36, 18, 0.06);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(27, 107, 88, 0.08), transparent 28rem),
+    var(--fondo);
+  color: var(--tinta);
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  line-height: 1.5;
+}
+
+h1, h2, .marca, button, .boton, input, .dia-link, .nav a {
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+h1 {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+p { margin: 0 0 1rem; }
+
+a { color: var(--acento-oscuro); }
+
+.cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--linea);
+  background: rgba(255, 253, 248, 0.92);
+  position: sticky;
+  top: 0;
+}
+
+.marca {
+  color: var(--tinta);
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.nav a {
+  color: var(--tinta);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav a[aria-current="page"] {
+  color: var(--acento-oscuro);
+  font-weight: 700;
+}
+
+.nav button {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--suave);
+  cursor: pointer;
+  font: inherit;
+}
+
+.contenido {
+  width: min(960px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.hero {
+  padding: 1rem 0 0.5rem;
+}
+
+.sobre {
+  margin: 0 0 0.5rem;
+  color: var(--acento);
+  font-family: "Segoe UI", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.acciones, .encabezado-dia, .acciones-franja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.boton, .nav button, .bloque {
+  cursor: pointer;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 2px solid var(--acento);
+  background: var(--acento);
+  color: #f4fbf8;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.boton.secundario {
+  background: transparent;
+  color: var(--acento-oscuro);
+}
+
+.boton.peligro {
+  background: transparent;
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.tarjeta, .franja {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  box-shadow: var(--sombra);
+}
+
+.nota, .estado {
+  color: var(--suave);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.tarjeta {
+  max-width: 32rem;
+  padding: 1.25rem;
+}
+
+.formulario {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.formulario label {
+  display: grid;
+  gap: 0.35rem;
+  font-family: "Segoe UI", sans-serif;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"] {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  background: #fff;
+  color: var(--tinta);
+  font: inherit;
+}
+
+.aviso {
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.aviso.ok {
+  background: var(--acento-claro);
+  color: var(--acento-oscuro);
+}
+
+.aviso.error {
+  background: var(--error-fondo);
+  color: var(--error);
+}
+
+.aviso ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.dias {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.dia-link {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  min-height: 44px;
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--papel);
+  color: var(--tinta);
+  text-decoration: none;
+}
+
+.dia-link.activo {
+  border-color: var(--acento);
+  background: var(--acento-claro);
+}
+
+.dia-link span, .dia-link small {
+  font-size: 0.75rem;
+  color: var(--suave);
+  text-transform: uppercase;
+}
+
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.bloque {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border: 2px solid var(--linea);
+  border-radius: 12px;
+  background: var(--papel);
+  font-family: "Segoe UI", sans-serif;
+  font-weight: 700;
+}
+
+.bloque input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.bloque:focus-within,
+.bloque.elegido,
+.bloque:has(input:checked) {
+  border-color: var(--acento);
+  background: var(--acento-claro);
+}
+
+.grilla .boton { grid-column: 1 / -1; justify-self: start; }
+
+.franjas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.franja {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+}
+
+.franja div { display: grid; gap: 0.15rem; }
+
+.franja.reservado { border-color: #b7d7cc; }
+.franja.cerrado, .franja.pasado { background: #f7f4ee; }
+
+.lista-citas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.lista-citas li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+}
+
+.lista-citas li div { display: grid; }
+
+:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .cabecera, .franja, .lista-citas li, .encabezado-dia {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contenido { width: min(960px, calc(100% - 1.5rem)); }
+}

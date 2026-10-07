@@ -1,0 +1,44 @@
+Instalación en cPanel
+=====================
+
+Sube el contenido de la carpeta agenda a public_html
+(o a la carpeta del dominio o subdominio).
+
+No subas la carpeta datos-mysql. Esa base solo existe en tu computadora.
+Tampoco subas config/config.php de tu computadora: tiene la clave local.
+En el servidor se crea otro config.php a partir de config.example.php.
+
+1. En cPanel abre «Seleccionar versión de PHP» o «MultiPHP Manager»
+   y elige PHP 8.1 o superior.
+
+2. En «Bases de datos MySQL»:
+   - Crea una base.
+   - Crea un usuario con una contraseña.
+   - Agrega ese usuario a la base con todos los privilegios.
+   Anota el nombre de la base, el usuario y la contraseña.
+   cPanel les pone un prefijo, por ejemplo cuenta_agenda.
+
+3. Entra a phpMyAdmin, selecciona esa base e importa, en este orden:
+   - sql/schema.sql
+   - sql/anfitrion.sql
+
+4. En el administrador de archivos, copia config/config.example.php
+   a config/config.php. Edita config.php con el host localhost,
+   el puerto 3306 y los datos del paso 2.
+   El nombre del sitio y el horario también se cambian en ese archivo.
+
+5. Activa el certificado SSL del dominio (AutoSSL o «SSL/TLS»).
+   El sitio debe abrirse con https://.
+
+6. Abre el dominio en el navegador. La dirección pública es la raíz
+   del dominio, no una carpeta llamada public.
+
+Cuenta de Servicios Contables A&Z
+--------------------
+Correo: anfitrion@example.com
+Contraseña inicial: Anfitrion.local
+
+Cámbiala cuando el sitio esté en internet. El registro público
+solo crea clientes.
+
+Si ya había otro sitio en public_html, guarda una copia antes de subir estos archivos.

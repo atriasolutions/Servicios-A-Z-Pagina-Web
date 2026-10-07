@@ -1,0 +1,25 @@
+---
+description: Criterios del sitio de Servicios Contables A&Z
+alwaysApply: true
+---
+
+# Sitio
+
+- Front en HTML, CSS y JavaScript. Servidor en PHP. Datos en MySQL.
+- Páginas en `public/`. Lógica compartida en `src/`. Configuración en `config/`.
+- El sitio es de Servicios Contables A&Z. Las reservas son asesorías de servicios contables.
+- Textos de la interfaz en español neutro, sin voseo.
+- Sin frameworks, Composer ni librerías, salvo pedido explícito.
+- Horario, horizonte y nombre del sitio salen de `config/config.php`.
+- No inventar teléfono, dirección ni precios del negocio.
+- Los cambios de tablas van en `sql/schema.sql`, con `utf8mb4`.
+- Credenciales solo en `config/config.php`. Ese archivo no se sube a git.
+
+Los bloques se calculan en PHP. No se insertan cupos vacíos en MySQL.
+
+```php
+// 08:00 a 18:00, de una hora: 08:00, 09:00, …, 17:00
+for ($minuto = 8 * 60; $minuto + 60 <= 18 * 60; $minuto += 60) {
+    $horas[] = sprintf('%02d:%02d:00', intdiv($minuto, 60), $minuto % 60);
+}
+```
