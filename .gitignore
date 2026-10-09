@@ -1,2 +1,5 @@
 /config/config.php
 /datos-mysql/
+/node_modules/
+/public/hot
+/public/build/

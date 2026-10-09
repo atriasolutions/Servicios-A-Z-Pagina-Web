@@ -71,4 +71,5 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/csrf.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/agenda.php';
+require __DIR__ . '/vite.php';
 require __DIR__ . '/vista.php';

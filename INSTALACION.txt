@@ -6,6 +6,9 @@ Sube el contenido de la carpeta agenda a public_html
 
 No subas la carpeta datos-mysql. Esa base solo existe en tu computadora.
 Tampoco subas config/config.php de tu computadora: tiene la clave local.
+No subas node_modules. En el servidor no hace falta Node.
+En la computadora, antes de subir, entra a la carpeta agenda y ejecuta npm run build.
+Sube también public/build, que es el CSS y el JavaScript compilados.
 En el servidor se crea otro config.php a partir de config.example.php.
 
 1. En cPanel abre «Seleccionar versión de PHP» o «MultiPHP Manager»

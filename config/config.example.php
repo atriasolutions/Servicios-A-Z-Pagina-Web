@@ -26,4 +26,8 @@ return [
         'horizonte_dias' => 30,
         'timezone' => 'America/Argentina/Buenos_Aires',
     ],
+    // Lista de profesionales del inicio. Si está vacía, esa sección no se muestra.
+    // Cada entrada usa nombre, cargo, descripcion y foto.
+    // foto es el archivo dentro de public/img/equipo/, por ejemplo archivo.jpg.
+    'profesionales' => [],
 ];

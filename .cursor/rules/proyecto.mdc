@@ -9,7 +9,7 @@ alwaysApply: true
 - Páginas en `public/`. Lógica compartida en `src/`. Configuración en `config/`.
 - El sitio es de Servicios Contables A&Z. Las reservas son asesorías de servicios contables.
 - Textos de la interfaz en español neutro, sin voseo.
-- Sin frameworks, Composer ni librerías, salvo pedido explícito.
+- Sin frameworks, Composer ni librerías, salvo pedido explícito. Vite es la excepción: compila el CSS y el JavaScript. No agregar otros frameworks.
 - Horario, horizonte y nombre del sitio salen de `config/config.php`.
 - No inventar teléfono, dirección ni precios del negocio.
 - Los cambios de tablas van en `sql/schema.sql`, con `utf8mb4`.

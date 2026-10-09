@@ -83,6 +83,13 @@ function icono(string $nombre): string
             . '<rect x="3.2" y="11.2" width="5.6" height="5.6" rx="1.3"/>'
             . '<rect x="11.2" y="11.2" width="5.6" height="5.6" rx="1.3"/>',
         'salir' => '<rect x="3" y="4" width="8.5" height="12" rx="2.2"/><path d="M10 10h7"/>',
+        'tributaria' => '<rect x="4.2" y="2.4" width="11.6" height="15.2" rx="1.4"/>'
+            . '<path d="M7 7h6M7 10h6M7 13h3.2"/>',
+        'financiera' => '<path d="M3.2 16.4h13.6M4.4 16.4V9.4M8.6 16.4V6.2M12.8 16.4V11.2M17 16.4V4.2"/>',
+        'remuneraciones' => '<circle cx="6.8" cy="5.4" r="1.8"/>'
+            . '<path d="M3.2 15.8c.35-2.7 1.85-4.1 3.6-4.1s3.25 1.4 3.6 4.1"/>'
+            . '<circle cx="14.1" cy="6.2" r="1.45"/>'
+            . '<path d="M11.3 15.8c.25-2.05 1.3-3.2 2.8-3.2s2.55 1.15 2.8 3.2"/>',
     ];
 
     return '<svg class="icono" viewBox="0 0 20 20" aria-hidden="true" focusable="false">'
@@ -90,7 +97,7 @@ function icono(string $nombre): string
         . '</svg>';
 }
 
-function abrirPagina(string $titulo): void
+function abrirPagina(string $titulo, bool $portada = false): void
 {
     $usuario = usuarioActual();
     $nombreSitio = (string) configuracion()['sitio']['nombre'];
@@ -101,9 +108,10 @@ function abrirPagina(string $titulo): void
     echo '<meta charset="utf-8">';
     echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
     echo '<title>' . e($titulo) . ' · ' . e($nombreSitio) . '</title>';
-    echo '<link rel="stylesheet" href="css/estilos.css">';
-    echo '</head><body>';
-    echo '<div class="marco">';
+    etiquetasVite();
+    echo $portada ? '</head><body class="portada">' : '</head><body>';
+    echo '<div class="barra-superior" aria-hidden="true"></div>';
+    echo '<header class="cabecera">';
     echo '<a class="marca" href="index.php">' . e($nombreSitio) . '</a>';
     echo '<nav class="menu" aria-label="Principal">';
 
@@ -130,8 +138,8 @@ function abrirPagina(string $titulo): void
         echo '</form>';
     }
 
-    echo '</nav>';
-    echo '<main class="contenido">';
+    echo '</nav></header>';
+    echo $portada ? '<main class="lienzo">' : '<main class="contenido">';
 
     if ($aviso) {
         $clase = ($aviso['tipo'] ?? '') === 'ok' ? 'aviso ok' : 'aviso error';
@@ -141,8 +149,10 @@ function abrirPagina(string $titulo): void
 
 function cerrarPagina(): void
 {
-    echo '</main></div>';
-    echo '<script src="js/agenda.js"></script>';
+    $nombreSitio = (string) configuracion()['sitio']['nombre'];
+
+    echo '</main>';
+    echo '<footer class="pie"><p>' . e($nombreSitio) . '</p></footer>';
     echo '</body></html>';
 }
 
