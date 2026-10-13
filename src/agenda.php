@@ -25,17 +25,54 @@ function horasDeAgenda(): array
     return $horas;
 }
 
-function fechasDeAgenda(): array
+function diasHabiles(): array
 {
-    $cantidad = (int) (configuracion()['agenda']['horizonte_dias'] ?? 0);
-    if ($cantidad < 1 || $cantidad > 90) {
-        throw new RuntimeException('El horizonte de la agenda en config/config.php no es válido.');
+    $dias = configuracion()['agenda']['dias'] ?? [1, 2, 3, 4, 5];
+    if (!is_array($dias)) {
+        throw new RuntimeException('Los días de la agenda en config/config.php no son válidos.');
     }
 
+    $habiles = [];
+    foreach ($dias as $dia) {
+        $numero = (int) $dia;
+        if ($numero >= 1 && $numero <= 7) {
+            $habiles[$numero] = true;
+        }
+    }
+
+    if ($habiles === []) {
+        throw new RuntimeException('Los días de la agenda en config/config.php no son válidos.');
+    }
+
+    return $habiles;
+}
+
+function fechasDeAgenda(): array
+{
+    $meses = (int) (configuracion()['agenda']['meses_anticipacion'] ?? 1);
+    if ($meses !== 1) {
+        throw new RuntimeException('La anticipación de la agenda en config/config.php no es válida.');
+    }
+
+    $habiles = diasHabiles();
     $hoy = new DateTimeImmutable('today', zonaHoraria());
+    $primerDiaDestino = $hoy->modify('first day of next month');
+    $ultimoDiaDestino = (int) $primerDiaDestino->format('t');
+    $diaDestino = min((int) $hoy->format('j'), $ultimoDiaDestino);
+    $limite = $primerDiaDestino->setDate(
+        (int) $primerDiaDestino->format('Y'),
+        (int) $primerDiaDestino->format('n'),
+        $diaDestino
+    );
     $fechas = [];
-    for ($i = 0; $i < $cantidad; $i++) {
-        $fechas[] = $hoy->modify('+' . $i . ' days');
+    for ($fecha = $hoy; $fecha <= $limite; $fecha = $fecha->modify('+1 day')) {
+        if (isset($habiles[(int) $fecha->format('N')])) {
+            $fechas[] = $fecha;
+        }
+    }
+
+    if ($fechas === []) {
+        throw new RuntimeException('El horizonte de la agenda no incluye días hábiles.');
     }
 
     return $fechas;
@@ -48,14 +85,13 @@ function fechaEnAgenda(string $valor): ?DateTimeImmutable
         return null;
     }
 
-    $fechas = fechasDeAgenda();
-    $minimo = $fechas[0]->format('Y-m-d');
-    $maximo = $fechas[array_key_last($fechas)]->format('Y-m-d');
-    if ($valor < $minimo || $valor > $maximo) {
-        return null;
+    foreach (fechasDeAgenda() as $habil) {
+        if ($habil->format('Y-m-d') === $valor) {
+            return $fecha;
+        }
     }
 
-    return $fecha;
+    return null;
 }
 
 function normalizarHora(string $hora): ?string
@@ -95,10 +131,12 @@ function cargarPeriodo(): array
 
     $citas = [];
     $consulta = base()->prepare(
-        'SELECT c.id, c.fecha, c.hora_inicio, c.servicio, c.usuario_id, u.nombre, u.telefono, u.email
-         FROM citas c
-         INNER JOIN usuarios u ON u.id = c.usuario_id
-         WHERE c.estado = \'reservada\' AND c.fecha BETWEEN ? AND ?'
+        'SELECT id, fecha, hora_inicio, servicio,
+                cliente_nombre AS nombre,
+                cliente_telefono AS telefono,
+                cliente_email AS email
+         FROM citas
+         WHERE estado = \'reservada\' AND fecha BETWEEN ? AND ?'
     );
     $consulta->execute([$desde, $hasta]);
     foreach ($consulta as $fila) {
@@ -166,19 +204,51 @@ function etiquetaServicio(?string $clave): string
     return servicios()[$clave] ?? 'Asesoría';
 }
 
-function reservarBloque(int $usuarioId, string $fecha, string $hora, string $servicio): ?string
+function validarClienteReserva(array $entrada): array
 {
+    $datos = [
+        'nombre' => trim((string) ($entrada['nombre'] ?? '')),
+        'email' => normalizarEmail((string) ($entrada['email'] ?? '')),
+        'telefono' => trim((string) ($entrada['telefono'] ?? '')),
+    ];
+    $errores = [];
+    $largoNombre = function_exists('mb_strlen')
+        ? mb_strlen($datos['nombre'], 'UTF-8')
+        : strlen($datos['nombre']);
+
+    if ($largoNombre < 2 || $largoNombre > 120 || preg_match('/^[\p{L}\s\'.-]+$/u', $datos['nombre']) !== 1) {
+        $errores[] = 'Escribe tu nombre, entre 2 y 120 letras.';
+    }
+    if (filter_var($datos['email'], FILTER_VALIDATE_EMAIL) === false || strlen($datos['email']) > 190) {
+        $errores[] = 'El correo no es válido.';
+    }
+    $digitos = preg_replace('/\D+/', '', $datos['telefono']) ?? '';
+    if (strlen($datos['telefono']) > 40 || strlen($digitos) < 6 || strlen($digitos) > 20) {
+        $errores[] = 'El teléfono tiene que tener entre 6 y 20 números.';
+    }
+
+    return ['datos' => $datos, 'errores' => $errores];
+}
+
+function reservarBloque(array $cliente, string $fecha, string $hora, string $servicio): array
+{
+    $validacion = validarClienteReserva($cliente);
+    if ($validacion['errores'] !== []) {
+        return ['error' => $validacion['errores'][0], 'cita' => null];
+    }
+    $cliente = $validacion['datos'];
+
     if (servicioValido($servicio) === null) {
-        return 'Elige un tipo de trámite.';
+        return ['error' => 'Elige un tipo de trámite.', 'cita' => null];
     }
 
     if (!fechaEnAgenda($fecha) || !normalizarHora($hora)) {
-        return 'Ese horario no está disponible.';
+        return ['error' => 'Ese horario no está disponible.', 'cita' => null];
     }
 
     $hora = normalizarHora($hora);
     if (inicioDeBloque($fecha, $hora) <= new DateTimeImmutable('now', zonaHoraria())) {
-        return 'Ese horario ya pasó.';
+        return ['error' => 'Ese horario ya pasó.', 'cita' => null];
     }
 
     $pdo = base();
@@ -191,7 +261,7 @@ function reservarBloque(int $usuarioId, string $fecha, string $hora, string $ser
         $bloqueo->execute([$fecha, $hora]);
         if ($bloqueo->fetch()) {
             $pdo->rollBack();
-            return 'Ese horario está cerrado.';
+            return ['error' => 'Ese horario está cerrado.', 'cita' => null];
         }
 
         $ocupado = $pdo->prepare(
@@ -202,32 +272,55 @@ function reservarBloque(int $usuarioId, string $fecha, string $hora, string $ser
         $ocupado->execute([$fecha, $hora]);
         if ($ocupado->fetch()) {
             $pdo->rollBack();
-            return 'Ese horario acaba de ser reservado.';
+            return ['error' => 'Ese horario acaba de ser reservado.', 'cita' => null];
         }
 
         $alta = $pdo->prepare(
-            'INSERT INTO citas (usuario_id, fecha, hora_inicio, servicio, estado)
-             VALUES (?, ?, ?, ?, \'reservada\')'
+            'INSERT INTO citas
+                (usuario_id, cliente_nombre, cliente_email, cliente_telefono, fecha, hora_inicio, servicio, estado)
+             VALUES (NULL, ?, ?, ?, ?, ?, ?, \'reservada\')'
         );
-        $alta->execute([$usuarioId, $fecha, $hora, $servicio]);
+        $alta->execute([
+            $cliente['nombre'],
+            $cliente['email'],
+            $cliente['telefono'],
+            $fecha,
+            $hora,
+            $servicio,
+        ]);
+        $citaId = (int) $pdo->lastInsertId();
         $pdo->commit();
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
         if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
-            return 'Ese horario acaba de ser reservado.';
+            return ['error' => 'Ese horario acaba de ser reservado.', 'cita' => null];
         }
         throw $e;
     }
 
-    return null;
+    return [
+        'error' => null,
+        'cita' => [
+            'id' => $citaId,
+            'cliente_nombre' => $cliente['nombre'],
+            'cliente_email' => $cliente['email'],
+            'cliente_telefono' => $cliente['telefono'],
+            'fecha' => $fecha,
+            'hora_inicio' => $hora,
+            'servicio' => $servicio,
+            'estado' => 'reservada',
+        ],
+    ];
 }
 
 function citaPorId(int $citaId): ?array
 {
     $consulta = base()->prepare(
-        'SELECT id, usuario_id, fecha, hora_inicio, estado FROM citas WHERE id = ?'
+        'SELECT id, usuario_id, cliente_nombre, cliente_email, cliente_telefono,
+                fecha, hora_inicio, servicio, estado
+         FROM citas WHERE id = ?'
     );
     $consulta->execute([$citaId]);
     $cita = $consulta->fetch();
@@ -256,11 +349,11 @@ function cancelarReservaCliente(int $usuarioId, int $citaId): ?string
     return $consulta->rowCount() === 1 ? null : 'No encontramos esa asesoría.';
 }
 
-function cancelarReservaAnfitrion(int $citaId): ?string
+function cancelarReservaAnfitrion(int $citaId): array
 {
     $cita = citaPorId($citaId);
     if (!$cita || $cita['estado'] !== 'reservada') {
-        return 'No encontramos esa asesoría.';
+        return ['error' => 'No encontramos esa asesoría.', 'cita' => null];
     }
 
     $consulta = base()->prepare(
@@ -268,7 +361,12 @@ function cancelarReservaAnfitrion(int $citaId): ?string
     );
     $consulta->execute([$citaId]);
 
-    return $consulta->rowCount() === 1 ? null : 'No encontramos esa asesoría.';
+    if ($consulta->rowCount() !== 1) {
+        return ['error' => 'No encontramos esa asesoría.', 'cita' => null];
+    }
+
+    $cita['estado'] = 'cancelada';
+    return ['error' => null, 'cita' => $cita];
 }
 
 function cerrarBloque(string $fecha, string $hora): ?string

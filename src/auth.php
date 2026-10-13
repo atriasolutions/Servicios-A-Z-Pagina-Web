@@ -95,7 +95,7 @@ function registrarCliente(string $nombre, string $email, string $telefono, strin
 function iniciarSesion(string $email, string $clave): bool
 {
     $consulta = base()->prepare(
-        'SELECT id, password_hash FROM usuarios WHERE email = ?'
+        'SELECT id, password_hash FROM usuarios WHERE email = ? AND rol = \'anfitrion\''
     );
     $consulta->execute([$email]);
     $usuario = $consulta->fetch();

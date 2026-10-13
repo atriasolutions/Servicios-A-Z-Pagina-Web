@@ -18,8 +18,8 @@ alwaysApply: true
 Los bloques se calculan en PHP. No se insertan cupos vacíos en MySQL.
 
 ```php
-// 08:00 a 18:00, de una hora: 08:00, 09:00, …, 17:00
-for ($minuto = 8 * 60; $minuto + 60 <= 18 * 60; $minuto += 60) {
+// 10:00 a 20:00, de una hora, lunes a viernes: 10:00, 11:00, …, 19:00
+for ($minuto = 10 * 60; $minuto + 60 <= 20 * 60; $minuto += 60) {
     $horas[] = sprintf('%02d:%02d:00', intdiv($minuto, 60), $minuto % 60);
 }
 ```

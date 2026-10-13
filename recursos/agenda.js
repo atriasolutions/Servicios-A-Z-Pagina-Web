@@ -37,3 +37,118 @@
     }
   });
 })();
+
+(function () {
+  var carrusel = document.querySelector("[data-carrusel]");
+  if (!carrusel) {
+    return;
+  }
+
+  var pista = carrusel.querySelector(".carrusel-pista");
+  var tarjetas = Array.prototype.slice.call(carrusel.querySelectorAll(".tarjeta-noticia"));
+  var anterior = carrusel.querySelector("[data-carrusel-anterior]");
+  var siguiente = carrusel.querySelector("[data-carrusel-siguiente]");
+  var puntos = carrusel.querySelector("[data-carrusel-puntos]");
+  var estado = carrusel.querySelector("[data-carrusel-estado]");
+  var pagina = 0;
+  var temporizador = 0;
+  var reducir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function porPagina() {
+    return window.innerWidth <= 700 ? 1 : 3;
+  }
+
+  function totalPaginas() {
+    return Math.max(1, Math.ceil(tarjetas.length / porPagina()));
+  }
+
+  function dibujarPuntos() {
+    var total = totalPaginas();
+    puntos.innerHTML = "";
+    if (total < 2) {
+      return;
+    }
+    for (var indice = 0; indice < total; indice += 1) {
+      var boton = document.createElement("button");
+      boton.type = "button";
+      boton.setAttribute("aria-label", "Página " + (indice + 1));
+      if (indice === pagina) {
+        boton.setAttribute("aria-current", "true");
+      }
+      boton.addEventListener("click", function (evento) {
+        var elegido = Array.prototype.indexOf.call(puntos.children, evento.currentTarget);
+        if (elegido >= 0) {
+          pagina = elegido;
+          mostrar();
+        }
+      });
+      puntos.appendChild(boton);
+    }
+  }
+
+  function mostrar() {
+    var total = totalPaginas();
+    if (pagina >= total) {
+      pagina = 0;
+    }
+    if (pagina < 0) {
+      pagina = total - 1;
+    }
+    tarjetas.forEach(function (tarjeta) {
+      tarjeta.style.flexBasis = (100 / porPagina()) + "%";
+    });
+    pista.style.transform = "translateX(" + (-pagina * 100) + "%)";
+    dibujarPuntos();
+    carrusel.querySelector(".carrusel-controles").hidden = total < 2;
+    if (estado) {
+      estado.textContent = "Página " + (pagina + 1) + " de " + total;
+    }
+  }
+
+  function mover(delta) {
+    pagina += delta;
+    mostrar();
+  }
+
+  function pausar() {
+    window.clearInterval(temporizador);
+    temporizador = 0;
+  }
+
+  function reanudar() {
+    if (reducir || totalPaginas() < 2 || temporizador) {
+      return;
+    }
+    temporizador = window.setInterval(function () {
+      mover(1);
+    }, 7000);
+  }
+
+  anterior.addEventListener("click", function () {
+    mover(-1);
+  });
+  siguiente.addEventListener("click", function () {
+    mover(1);
+  });
+  carrusel.addEventListener("keydown", function (evento) {
+    if (evento.key === "ArrowLeft") {
+      evento.preventDefault();
+      mover(-1);
+    }
+    if (evento.key === "ArrowRight") {
+      evento.preventDefault();
+      mover(1);
+    }
+  });
+  carrusel.addEventListener("mouseenter", pausar);
+  carrusel.addEventListener("mouseleave", reanudar);
+  carrusel.addEventListener("focusin", pausar);
+  carrusel.addEventListener("focusout", reanudar);
+  window.addEventListener("resize", function () {
+    pagina = Math.min(pagina, totalPaginas() - 1);
+    mostrar();
+  });
+
+  mostrar();
+  reanudar();
+})();

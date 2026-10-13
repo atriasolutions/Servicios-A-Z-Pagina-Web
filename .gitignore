@@ -1,5 +1,8 @@
 /config/config.php
 /datos-mysql/
+/datos-cache/*
+!/datos-cache/.htaccess
 /node_modules/
+/vendor/
 /public/hot
 /public/build/

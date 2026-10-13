@@ -23,17 +23,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!iniciarSesion($email, $clave)) {
             $errores[] = 'Correo o contraseña incorrectos.';
         } else {
-            $ingreso = usuarioActual();
-            redirigir($ingreso && $ingreso['rol'] === 'anfitrion' ? 'agenda.php' : 'horarios.php');
+            redirigir('agenda.php');
         }
     }
 }
 
-abrirPagina('Entrar');
+abrirPagina('Acceso administrativo');
 ?>
 <section>
-  <h1>Entrar</h1>
-  <p>Los clientes y Servicios Contables A&amp;Z usan el mismo formulario. La agenda se abre según la cuenta.</p>
+  <h1>Acceso administrativo</h1>
+  <p>Este ingreso es exclusivo para gestionar horarios y reservas.</p>
   <?php erroresDe($errores); ?>
   <form class="formulario" method="post" action="login.php">
     <?= campoCsrf() ?>
@@ -47,7 +46,6 @@ abrirPagina('Entrar');
     </label>
     <button class="boton" type="submit">Entrar</button>
   </form>
-  <p class="nota">¿Primera vez? <a href="registro.php">Crear cuenta</a></p>
 </section>
 <?php
 cerrarPagina();

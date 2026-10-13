@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 CREATE TABLE IF NOT EXISTS citas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT UNSIGNED NOT NULL,
+  usuario_id INT UNSIGNED NULL,
+  cliente_nombre VARCHAR(120) NOT NULL,
+  cliente_email VARCHAR(190) NOT NULL,
+  cliente_telefono VARCHAR(40) NOT NULL,
   fecha DATE NOT NULL,
   hora_inicio TIME NOT NULL,
   servicio ENUM('gestion_tributaria', 'contabilidad_financiera', 'gestion_remuneraciones') NULL,

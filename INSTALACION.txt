@@ -6,7 +6,7 @@ Sube el contenido de la carpeta agenda a public_html
 
 No subas la carpeta datos-mysql. Esa base solo existe en tu computadora.
 Tampoco subas config/config.php de tu computadora: tiene la clave local.
-No subas node_modules. En el servidor no hace falta Node.
+No subas node_modules ni vendor. En el servidor no hace falta Node ni Composer.
 En la computadora, antes de subir, entra a la carpeta agenda y ejecuta npm run build.
 Sube también public/build, que es el CSS y el JavaScript compilados.
 En el servidor se crea otro config.php a partir de config.example.php.
@@ -25,10 +25,18 @@ En el servidor se crea otro config.php a partir de config.example.php.
    - sql/schema.sql
    - sql/anfitrion.sql
 
+   Si actualizas una instalación que ya tenía citas, no vuelvas a importar
+   schema.sql. Importa una sola vez sql/migracion-reservas-publicas.sql.
+
 4. En el administrador de archivos, copia config/config.example.php
    a config/config.php. Edita config.php con el host localhost,
    el puerto 3306 y los datos del paso 2.
    El nombre del sitio y el horario también se cambian en ese archivo.
+
+   Los avisos de reservas salen por FormSubmit al correo indicado en
+   correo.administrador. La primera reserva hace que FormSubmit envíe un
+   enlace de activación a esa cuenta de Gmail. Hay que abrirlo una sola vez
+   para que los avisos siguientes lleguen al administrador y al cliente.
 
 5. Activa el certificado SSL del dominio (AutoSSL o «SSL/TLS»).
    El sitio debe abrirse con https://.
@@ -38,10 +46,10 @@ En el servidor se crea otro config.php a partir de config.example.php.
 
 Cuenta de Servicios Contables A&Z
 --------------------
-Correo: anfitrion@example.com
+Correo: mmb21894@gmail.com
 Contraseña inicial: Anfitrion.local
 
-Cámbiala cuando el sitio esté en internet. El registro público
-solo crea clientes.
+Cámbiala cuando el sitio esté en internet. Los clientes reservan sin crear
+una cuenta; este ingreso es solo para administrar la agenda.
 
 Si ya había otro sitio en public_html, guarda una copia antes de subir estos archivos.

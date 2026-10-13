@@ -48,8 +48,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tipo = 'ok';
     } elseif ($accion === 'cancelar_cita') {
         $resultado = cancelarReservaAnfitrion($citaId);
-        $tipo = $resultado === null ? 'ok' : 'error';
-        $mensaje = $resultado ?? 'Cancelaste la asesoría. El horario volvió a quedar libre.';
+        if ($resultado['error'] !== null) {
+            $mensaje = $resultado['error'];
+        } else {
+            $correoEnviado = notificarCancelacion($resultado['cita']);
+            $tipo = $correoEnviado ? 'ok' : 'error';
+            $mensaje = 'Cancelaste la asesoría. El horario volvió a quedar libre.';
+            if (!$correoEnviado) {
+                $mensaje .= ' No pudimos enviar el aviso de cancelación al cliente.';
+            }
+        }
     }
 
     aviso($tipo, $mensaje);
@@ -76,13 +84,13 @@ abrirPagina('Agenda');
 
   <div class="encabezado-dia">
     <h2><?= e(fechaLarga($fecha)) ?></h2>
-    <form method="post" action="agenda.php" data-confirmar="¿Cerrar los horarios libres de este día?">
+    <form method="post" action="agenda.php" data-confirmar="<?= e('¿Cerrar los horarios libres del ' . fechaLarga($fecha) . '?') ?>">
       <?= campoCsrf() ?>
       <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
       <input type="hidden" name="accion" value="cerrar_dia">
       <button class="boton secundario" type="submit">Cerrar día</button>
     </form>
-    <form method="post" action="agenda.php" data-confirmar="¿Abrir los horarios cerrados de este día?">
+    <form method="post" action="agenda.php" data-confirmar="<?= e('¿Abrir los horarios cerrados del ' . fechaLarga($fecha) . '?') ?>">
       <?= campoCsrf() ?>
       <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
       <input type="hidden" name="accion" value="abrir_dia">
@@ -115,7 +123,7 @@ abrirPagina('Agenda');
         </div>
         <div class="acciones-franja">
           <?php if ($bloque['estado'] === 'libre'): ?>
-            <form method="post" action="agenda.php" data-confirmar="¿Cerrar este horario?">
+            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Cerrar el ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">
               <?= campoCsrf() ?>
               <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
               <input type="hidden" name="hora" value="<?= e($bloque['hora']) ?>">
@@ -123,7 +131,7 @@ abrirPagina('Agenda');
               <button class="boton secundario" type="submit">Cerrar</button>
             </form>
           <?php elseif ($bloque['estado'] === 'cerrado'): ?>
-            <form method="post" action="agenda.php" data-confirmar="¿Abrir este horario?">
+            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Abrir el ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">
               <?= campoCsrf() ?>
               <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
               <input type="hidden" name="hora" value="<?= e($bloque['hora']) ?>">
@@ -131,7 +139,7 @@ abrirPagina('Agenda');
               <button class="boton secundario" type="submit">Abrir</button>
             </form>
           <?php elseif ($bloque['estado'] === 'reservado'): ?>
-            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Cancelar la asesoría de ' . $bloque['cliente'] . '?') ?>">
+            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Cancelar la asesoría de ' . $bloque['cliente'] . ' del ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">
               <?= campoCsrf() ?>
               <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
               <input type="hidden" name="cita_id" value="<?= e((string) $bloque['cita_id']) ?>">

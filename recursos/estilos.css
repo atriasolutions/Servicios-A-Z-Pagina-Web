@@ -214,7 +214,8 @@ a { color: var(--acento-oscuro); }
 }
 
 .servicios,
-.equipo {
+.equipo,
+.actualidad {
   padding: 3.5rem 1.5rem;
   background: rgba(244, 247, 250, 0.62);
 }
@@ -225,7 +226,8 @@ a { color: var(--acento-oscuro); }
 }
 
 .servicios h2,
-.equipo h2 {
+.equipo h2,
+.actualidad h2 {
   margin: 0 0 1.5rem;
   text-align: center;
   font-size: clamp(1.4rem, 2.5vw, 1.85rem);
@@ -278,6 +280,81 @@ a { color: var(--acento-oscuro); }
   border-radius: 50%;
   object-fit: cover;
 }
+
+.carrusel { position: relative; }
+
+.carrusel-estado {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.carrusel-ventana { overflow: hidden; }
+
+.carrusel-pista {
+  display: flex;
+  transition: transform 0.4s ease;
+}
+
+.tarjeta-noticia {
+  display: flex;
+  flex: 0 0 33.3333%;
+  padding: 0 0.625rem;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.noticia-cuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 1.35rem 1.15rem;
+  text-align: left;
+}
+
+.noticia-cuerpo h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.noticia-cuerpo p { margin: 0; }
+
+.noticia-extracto {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.noticia-cuerpo .boton { margin-top: auto; }
+
+.carrusel-controles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.carrusel-puntos { display: flex; gap: 0.4rem; }
+
+.carrusel-puntos button {
+  width: 0.7rem;
+  height: 0.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(61, 92, 115, 0.35);
+  cursor: pointer;
+}
+
+.carrusel-puntos button[aria-current="true"] { background: var(--acento); }
 
 .pie {
   margin-top: auto;
@@ -383,6 +460,28 @@ a { color: var(--acento-oscuro); }
   display: grid;
   gap: 0.35rem;
   font-weight: 600;
+}
+
+.reserva-publica {
+  max-width: 48rem;
+}
+
+.datos-reserva {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.9rem;
+}
+
+.reserva-publica fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reserva-publica legend {
+  margin-bottom: 0.65rem;
+  font-weight: 700;
 }
 
 input[type="text"],
@@ -537,6 +636,10 @@ input[type="tel"] {
   outline-offset: 2px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .carrusel-pista { transition: none; }
+}
+
 @media (max-width: 700px) {
   .cabecera {
     flex-direction: column;
@@ -551,6 +654,11 @@ input[type="tel"] {
 
   .rejilla,
   .tramites { grid-template-columns: 1fr; }
+
+  .tarjeta-noticia {
+    flex-basis: 100%;
+    padding: 0;
+  }
 
   .franja, .lista-citas li, .encabezado-dia {
     flex-direction: column;

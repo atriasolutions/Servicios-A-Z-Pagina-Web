@@ -37,15 +37,12 @@ abrirPagina('Inicio', true);
 <section class="banner">
   <div class="banner-texto">
     <h1><?= e($nombreSitio) ?></h1>
-    <p><?= e(textoHorario()) ?> Entra con tu cuenta, elige el trámite y un horario libre. Ese horario queda ocupado para cualquier trámite.</p>
+    <p><?= e(textoHorario()) ?> Elige el trámite y un horario libre; no necesitas crear una cuenta.</p>
     <div class="acciones">
       <?php if ($usuario && $usuario['rol'] === 'anfitrion'): ?>
         <a class="boton" href="agenda.php">Ver la agenda</a>
-      <?php elseif ($usuario): ?>
-        <a class="boton" href="mis-citas.php">Mis asesorías</a>
       <?php else: ?>
-        <a class="boton" href="registro.php">Crear cuenta</a>
-        <a class="boton secundario" href="login.php">Entrar</a>
+        <a class="boton" href="horarios.php">Reservar una hora</a>
       <?php endif; ?>
     </div>
   </div>
@@ -65,6 +62,42 @@ abrirPagina('Inicio', true);
     </div>
   </div>
 </section>
+
+<?php $noticias = noticiasTributarias(); ?>
+<?php if ($noticias !== []): ?>
+<section class="actualidad" aria-labelledby="titulo-actualidad">
+  <div class="seccion-inner">
+    <h2 id="titulo-actualidad">Actualidad tributaria</h2>
+    <div class="carrusel" data-carrusel tabindex="0" aria-roledescription="carrusel" aria-label="Noticias del Servicio de Impuestos Internos">
+      <p class="carrusel-estado" data-carrusel-estado aria-live="polite"></p>
+      <div class="carrusel-ventana">
+        <div class="carrusel-pista">
+          <?php foreach ($noticias as $noticia): ?>
+            <article class="tarjeta-noticia">
+              <div class="noticia-cuerpo vidrio">
+                <p class="cargo"><?= e($noticia['categoria']) ?></p>
+                <h3><?= e($noticia['titulo']) ?></h3>
+                <?php if ($noticia['fecha'] !== ''): ?>
+                  <p class="nota"><?= e($noticia['fecha']) ?></p>
+                <?php endif; ?>
+                <?php if ($noticia['extracto'] !== ''): ?>
+                  <p class="noticia-extracto"><?= e($noticia['extracto']) ?></p>
+                <?php endif; ?>
+                <a class="boton" href="<?= e($noticia['enlace']) ?>" target="_blank" rel="noopener noreferrer">Leer en el SII</a>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <div class="carrusel-controles">
+        <button type="button" class="boton secundario" data-carrusel-anterior>Anterior</button>
+        <div class="carrusel-puntos" data-carrusel-puntos></div>
+        <button type="button" class="boton secundario" data-carrusel-siguiente>Siguiente</button>
+      </div>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <?php if ($profesionales !== []): ?>
 <section class="equipo">

@@ -63,7 +63,7 @@ function textoHorario(): string
     $hasta = sprintf('%02d:00', (int) $agenda['hora_fin']);
     $minutos = (int) $agenda['duracion_minutos'];
 
-    return 'Cada asesoría dura ' . $minutos . ' minutos, todos los días, de ' . $desde . ' a ' . $hasta . '.';
+    return 'Cada asesoría dura ' . $minutos . ' minutos, de lunes a viernes, de ' . $desde . ' a ' . $hasta . '.';
 }
 
 // Trazos dibujados para este sitio. No provienen de un set de terceros.
@@ -121,14 +121,11 @@ function abrirPagina(string $titulo, bool $portada = false): void
     };
 
     $enlace('index.php', 'Inicio', 'inicio');
-    if ($usuario && $usuario['rol'] === 'cliente') {
-        $enlace('horarios.php', 'Horarios', 'horarios');
-        $enlace('mis-citas.php', 'Mis asesorías', 'asesorias');
-    } elseif ($usuario && $usuario['rol'] === 'anfitrion') {
+    if ($usuario && $usuario['rol'] === 'anfitrion') {
         $enlace('agenda.php', 'Agenda', 'agenda');
     } else {
-        $enlace('login.php', 'Entrar', 'entrar');
-        $enlace('registro.php', 'Crear cuenta', 'cuenta');
+        $enlace('horarios.php', 'Reservar', 'horarios');
+        $enlace('login.php', 'Administración', 'entrar');
     }
 
     if ($usuario) {

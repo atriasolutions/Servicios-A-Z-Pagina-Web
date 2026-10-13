@@ -20,14 +20,24 @@ return [
         'nombre' => 'Servicios Contables A&Z',
     ],
     'agenda' => [
-        'hora_inicio' => 8,
-        'hora_fin' => 18,
+        'hora_inicio' => 10,
+        'hora_fin' => 20,
         'duracion_minutos' => 60,
-        'horizonte_dias' => 30,
+        'meses_anticipacion' => 1,
+        'dias' => [1, 2, 3, 4, 5],
         'timezone' => 'America/Argentina/Buenos_Aires',
+    ],
+    'correo' => [
+        'administrador' => 'mmb21894@gmail.com',
     ],
     // Lista de profesionales del inicio. Si está vacía, esa sección no se muestra.
     // Cada entrada usa nombre, cargo, descripcion y foto.
     // foto es el archivo dentro de public/img/equipo/, por ejemplo archivo.jpg.
     'profesionales' => [],
+    // Canal «Actualidad tributaria y normativa» del RSS oficial del SII.
+    'noticias' => [
+        'rss' => 'https://www.sii.cl/pagina/actualizada/noticias/rss/siiall_rss.xml',
+        'cache_horas' => 4,
+        'limite' => 9,
+    ],
 ];

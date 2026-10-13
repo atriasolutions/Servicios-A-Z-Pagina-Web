@@ -9,11 +9,16 @@ if ($pedido !== null) {
     $_SESSION['servicio'] = $pedido;
 }
 
-$usuario = exigirRol('cliente');
 $servicio = servicioValido((string) ($_POST['servicio'] ?? $_SESSION['servicio'] ?? ''));
 $solicitada = fechaEnAgenda((string) ($_GET['fecha'] ?? $_POST['fecha'] ?? ''));
 $fecha = $solicitada ?? fechasDeAgenda()[0];
 $fechaIso = $fecha->format('Y-m-d');
+$errores = [];
+$datos = [
+    'nombre' => trim((string) ($_POST['nombre'] ?? '')),
+    'email' => normalizarEmail((string) ($_POST['email'] ?? '')),
+    'telefono' => trim((string) ($_POST['telefono'] ?? '')),
+];
 
 $volver = 'horarios.php?fecha=' . urlencode($fechaIso);
 if ($servicio !== null) {
@@ -22,32 +27,36 @@ if ($servicio !== null) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfValido()) {
-        aviso('error', 'La solicitud no es válida. Vuelve a intentar.');
-        redirigir($volver);
-    }
+        $errores[] = 'La solicitud no es válida. Vuelve a intentar.';
+    } elseif ($servicio === null) {
+        $errores[] = 'Elige un tipo de trámite.';
+    } else {
+        $validacion = validarClienteReserva($datos);
+        $datos = $validacion['datos'];
+        $errores = $validacion['errores'];
 
-    if ($servicio === null) {
-        aviso('error', 'Elige un tipo de trámite.');
-        redirigir('horarios.php');
+        if ($errores === []) {
+            $resultado = reservarBloque(
+                $datos,
+                (string) ($_POST['fecha'] ?? ''),
+                (string) ($_POST['hora'] ?? ''),
+                $servicio
+            );
+            if ($resultado['error'] !== null) {
+                $errores[] = $resultado['error'];
+            } else {
+                $cita = $resultado['cita'];
+                $correoEnviado = notificarReserva($cita);
+                $mensaje = etiquetaServicio($servicio) . ' reservada para el '
+                    . fechaLarga($fecha) . ', ' . etiquetaBloque((string) $cita['hora_inicio']) . '.';
+                if (!$correoEnviado) {
+                    $mensaje .= ' La reserva quedó registrada, pero no pudimos enviar el correo de confirmación.';
+                }
+                aviso($correoEnviado ? 'ok' : 'error', $mensaje);
+                redirigir($volver);
+            }
+        }
     }
-
-    $error = reservarBloque(
-        (int) $usuario['id'],
-        (string) ($_POST['fecha'] ?? ''),
-        (string) ($_POST['hora'] ?? ''),
-        $servicio
-    );
-    if ($error) {
-        aviso('error', $error);
-        redirigir($volver);
-    }
-
-    $horaConfirmada = normalizarHora((string) ($_POST['hora'] ?? ''));
-    aviso(
-        'ok',
-        etiquetaServicio($servicio) . ' reservada para el ' . fechaLarga($fecha) . ', ' . etiquetaBloque((string) $horaConfirmada) . '.'
-    );
-    redirigir('mis-citas.php');
 }
 
 abrirPagina('Horarios');
@@ -71,7 +80,8 @@ abrirPagina('Horarios');
       ));
     ?>
     <h1><?= e(etiquetaServicio($servicio)) ?></h1>
-    <p><?= e(textoHorario()) ?> Se muestran los próximos <?= e((string) configuracion()['agenda']['horizonte_dias']) ?> días. Un horario ocupado no se puede reservar para otro trámite.</p>
+    <p><?= e(textoHorario()) ?> Puedes reservar hasta un mes de anticipación. Un horario ocupado no se puede reservar para otro trámite.</p>
+    <?php erroresDe($errores); ?>
     <div class="tramites">
       <?php foreach (servicios() as $clave => $nombre): ?>
         <a class="tramite<?= $clave === $servicio ? ' activo' : '' ?>" href="horarios.php?fecha=<?= e($fechaIso) ?>&amp;servicio=<?= e($clave) ?>"><?= e($nombre) ?></a>
@@ -102,16 +112,35 @@ abrirPagina('Horarios');
     <?php if ($libres === []): ?>
       <p class="nota">No hay horarios libres este día.</p>
     <?php else: ?>
-      <form class="grilla" method="post" action="horarios.php" data-reserva data-dia="<?= e(fechaLarga($fecha)) ?>" data-servicio="<?= e(etiquetaServicio($servicio)) ?>">
+      <form class="formulario reserva-publica" method="post" action="horarios.php" data-reserva data-dia="<?= e(fechaLarga($fecha)) ?>" data-servicio="<?= e(etiquetaServicio($servicio)) ?>">
         <?= campoCsrf() ?>
         <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
         <input type="hidden" name="servicio" value="<?= e($servicio) ?>">
-        <?php foreach ($libres as $bloque): ?>
-          <label class="bloque">
-            <input type="radio" name="hora" value="<?= e($bloque['hora']) ?>" required>
-            <span><?= e($bloque['etiqueta']) ?></span>
+        <div class="datos-reserva">
+          <label>
+            Nombre
+            <input type="text" name="nombre" required maxlength="120" autocomplete="name" value="<?= e($datos['nombre']) ?>">
           </label>
-        <?php endforeach; ?>
+          <label>
+            Correo
+            <input type="email" name="email" required maxlength="190" autocomplete="email" value="<?= e($datos['email']) ?>">
+          </label>
+          <label>
+            Teléfono
+            <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" value="<?= e($datos['telefono']) ?>">
+          </label>
+        </div>
+        <fieldset>
+          <legend>Elige una hora</legend>
+          <div class="grilla">
+            <?php foreach ($libres as $bloque): ?>
+              <label class="bloque">
+                <input type="radio" name="hora" value="<?= e($bloque['hora']) ?>" required>
+                <span><?= e($bloque['etiqueta']) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </fieldset>
         <button class="boton" type="submit">Reservar</button>
       </form>
     <?php endif; ?>
