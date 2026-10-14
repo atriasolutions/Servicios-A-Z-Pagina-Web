@@ -131,12 +131,12 @@ function cargarPeriodo(): array
 
     $citas = [];
     $consulta = base()->prepare(
-        'SELECT id, fecha, hora_inicio, servicio,
+        'SELECT id, fecha, hora_inicio, servicio, estado,
                 cliente_nombre AS nombre,
                 cliente_telefono AS telefono,
                 cliente_email AS email
          FROM citas
-         WHERE estado = \'reservada\' AND fecha BETWEEN ? AND ?'
+         WHERE estado IN (\'pendiente\', \'reservada\') AND fecha BETWEEN ? AND ?'
     );
     $consulta->execute([$desde, $hasta]);
     foreach ($consulta as $fila) {
@@ -158,7 +158,9 @@ function bloquesDelDia(DateTimeImmutable $fecha, array $periodo): array
         $cita = $periodo['citas'][$clave] ?? null;
         $cerrado = isset($periodo['bloqueos'][$clave]);
 
-        if ($cita) {
+        if ($cita && ($cita['estado'] ?? '') === 'pendiente') {
+            $estado = 'espera';
+        } elseif ($cita) {
             $estado = 'reservado';
         } elseif ($cerrado) {
             $estado = 'cerrado';
@@ -186,9 +188,10 @@ function bloquesDelDia(DateTimeImmutable $fecha, array $periodo): array
 function servicios(): array
 {
     return [
-        'gestion_tributaria' => 'Gestión tributaria',
-        'contabilidad_financiera' => 'Contabilidad financiera',
-        'gestion_remuneraciones' => 'Gestión de remuneraciones',
+        'constitucion_empresas' => 'Constitución de Empresas',
+        'contabilidad' => 'Contabilidad',
+        'asesoria_laboral' => 'Asesoría Laboral',
+        'operacion_renta' => 'Operación renta',
     ];
 }
 
@@ -201,7 +204,13 @@ function servicioValido(?string $clave): ?string
 
 function etiquetaServicio(?string $clave): string
 {
-    return servicios()[$clave] ?? 'Asesoría';
+    $anteriores = [
+        'gestion_tributaria' => 'Gestión tributaria',
+        'contabilidad_financiera' => 'Contabilidad financiera',
+        'gestion_remuneraciones' => 'Gestión de remuneraciones',
+    ];
+
+    return servicios()[$clave] ?? $anteriores[$clave] ?? 'Asesoría';
 }
 
 function validarClienteReserva(array $entrada): array
@@ -266,7 +275,7 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
 
         $ocupado = $pdo->prepare(
             'SELECT id FROM citas
-             WHERE fecha = ? AND hora_inicio = ? AND estado = \'reservada\'
+             WHERE fecha = ? AND hora_inicio = ? AND estado IN (\'pendiente\', \'reservada\')
              FOR UPDATE'
         );
         $ocupado->execute([$fecha, $hora]);
@@ -275,10 +284,11 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
             return ['error' => 'Ese horario acaba de ser reservado.', 'cita' => null];
         }
 
+        $token = bin2hex(random_bytes(32));
         $alta = $pdo->prepare(
             'INSERT INTO citas
-                (usuario_id, cliente_nombre, cliente_email, cliente_telefono, fecha, hora_inicio, servicio, estado)
-             VALUES (NULL, ?, ?, ?, ?, ?, ?, \'reservada\')'
+                (usuario_id, cliente_nombre, cliente_email, cliente_telefono, fecha, hora_inicio, servicio, estado, token_hash)
+             VALUES (NULL, ?, ?, ?, ?, ?, ?, \'pendiente\', ?)'
         );
         $alta->execute([
             $cliente['nombre'],
@@ -287,6 +297,7 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
             $fecha,
             $hora,
             $servicio,
+            hash('sha256', $token),
         ]);
         $citaId = (int) $pdo->lastInsertId();
         $pdo->commit();
@@ -310,7 +321,8 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
             'fecha' => $fecha,
             'hora_inicio' => $hora,
             'servicio' => $servicio,
-            'estado' => 'reservada',
+            'estado' => 'pendiente',
+            'token' => $token,
         ],
     ];
 }
@@ -319,7 +331,7 @@ function citaPorId(int $citaId): ?array
 {
     $consulta = base()->prepare(
         'SELECT id, usuario_id, cliente_nombre, cliente_email, cliente_telefono,
-                fecha, hora_inicio, servicio, estado
+                fecha, hora_inicio, servicio, estado, token_hash
          FROM citas WHERE id = ?'
     );
     $consulta->execute([$citaId]);
@@ -369,6 +381,41 @@ function cancelarReservaAnfitrion(int $citaId): array
     return ['error' => null, 'cita' => $cita];
 }
 
+function resolverSolicitud(int $citaId, string $nuevoEstado, ?string $token): array
+{
+    if (!in_array($nuevoEstado, ['reservada', 'cancelada'], true)) {
+        return ['error' => 'Esta solicitud ya no está pendiente.', 'cita' => null];
+    }
+
+    $cita = citaPorId($citaId);
+    $hash = $token === null ? null : hash('sha256', $token);
+    if (
+        !$cita
+        || $cita['estado'] !== 'pendiente'
+        || ($hash !== null && (!is_string($cita['token_hash']) || !hash_equals($cita['token_hash'], $hash)))
+    ) {
+        return ['error' => 'Esta solicitud ya no está pendiente.', 'cita' => null];
+    }
+
+    $sql = 'UPDATE citas SET estado = ?, token_hash = NULL WHERE id = ? AND estado = \'pendiente\'';
+    $parametros = [$nuevoEstado, $citaId];
+    if ($hash !== null) {
+        $sql .= ' AND token_hash = ?';
+        $parametros[] = $hash;
+    }
+
+    $consulta = base()->prepare($sql);
+    $consulta->execute($parametros);
+    if ($consulta->rowCount() !== 1) {
+        return ['error' => 'Esta solicitud ya no está pendiente.', 'cita' => null];
+    }
+
+    $cita['estado'] = $nuevoEstado;
+    unset($cita['token_hash']);
+
+    return ['error' => null, 'cita' => $cita];
+}
+
 function cerrarBloque(string $fecha, string $hora): ?string
 {
     if (!fechaEnAgenda($fecha) || !($hora = normalizarHora($hora))) {
@@ -376,7 +423,7 @@ function cerrarBloque(string $fecha, string $hora): ?string
     }
 
     $ocupado = base()->prepare(
-        'SELECT id FROM citas WHERE fecha = ? AND hora_inicio = ? AND estado = \'reservada\''
+        'SELECT id FROM citas WHERE fecha = ? AND hora_inicio = ? AND estado IN (\'pendiente\', \'reservada\')'
     );
     $ocupado->execute([$fecha, $hora]);
     if ($ocupado->fetch()) {
@@ -434,7 +481,7 @@ function cerrarDia(string $fecha): string
     }
     if ($conCita > 0) {
         return 'Se cerraron ' . $cerrados . ' horarios libres. Quedaron ' . $conCita
-            . ' con asesoría: cancela esas asesorías si también quieres cerrarlos.';
+            . ' con solicitud o asesoría: resuélvelas si también quieres cerrarlos.';
     }
 
     return 'Día cerrado.';

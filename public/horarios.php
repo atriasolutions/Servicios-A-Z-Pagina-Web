@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 require __DIR__ . '/../src/bootstrap.php';
 
+if (isset($_GET['elegir'])) {
+    unset($_SESSION['servicio']);
+}
+
 $pedido = servicioValido((string) ($_GET['servicio'] ?? ''));
 if ($pedido !== null) {
     $_SESSION['servicio'] = $pedido;
@@ -47,10 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $cita = $resultado['cita'];
                 $correoEnviado = notificarReserva($cita);
-                $mensaje = etiquetaServicio($servicio) . ' reservada para el '
-                    . fechaLarga($fecha) . ', ' . etiquetaBloque((string) $cita['hora_inicio']) . '.';
+                $mensaje = 'Tu solicitud de ' . etiquetaServicio($servicio) . ' quedó en espera para el '
+                    . fechaLarga($fecha) . ', ' . etiquetaBloque((string) $cita['hora_inicio'])
+                    . '. Te avisaremos cuando sea confirmada.';
                 if (!$correoEnviado) {
-                    $mensaje .= ' La reserva quedó registrada, pero no pudimos enviar el correo de confirmación.';
+                    $mensaje .= ' No pudimos enviar el aviso por correo.';
                 }
                 aviso($correoEnviado ? 'ok' : 'error', $mensaje);
                 redirigir($volver);
@@ -80,7 +85,7 @@ abrirPagina('Horarios');
       ));
     ?>
     <h1><?= e(etiquetaServicio($servicio)) ?></h1>
-    <p><?= e(textoHorario()) ?> Puedes reservar hasta un mes de anticipación. Un horario ocupado no se puede reservar para otro trámite.</p>
+    <p><?= e(textoHorario()) ?> Puedes reservar hasta un mes de anticipación. La hora queda en espera hasta que la confirmemos y no se ofrece a otra persona.</p>
     <?php erroresDe($errores); ?>
     <div class="tramites">
       <?php foreach (servicios() as $clave => $nombre): ?>
@@ -141,7 +146,10 @@ abrirPagina('Horarios');
             <?php endforeach; ?>
           </div>
         </fieldset>
-        <button class="boton" type="submit">Reservar</button>
+        <div class="acciones acciones-reserva">
+          <a class="boton secundario" href="horarios.php?elegir=1">Volver</a>
+          <button class="boton" type="submit">Reservar</button>
+        </div>
       </form>
     <?php endif; ?>
   <?php endif; ?>

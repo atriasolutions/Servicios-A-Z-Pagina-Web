@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mensaje = 'Ese horario ya estaba cerrado.';
             $tipo = 'ok';
         } elseif ($resultado === 'reservado') {
-            $mensaje = 'Ese horario tiene una asesoría. Cancela esa asesoría si quieres cerrarlo.';
+            $mensaje = 'Ese horario tiene una solicitud o una asesoría. Resuélvela si quieres cerrarlo.';
         } else {
             $mensaje = $resultado;
         }
@@ -46,6 +46,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'abrir_dia') {
         $mensaje = abrirDia($fechaIso);
         $tipo = 'ok';
+    } elseif ($accion === 'confirmar_cita' || $accion === 'rechazar_cita') {
+        $confirmar = $accion === 'confirmar_cita';
+        $resultado = resolverSolicitud($citaId, $confirmar ? 'reservada' : 'cancelada', null);
+        if ($resultado['error'] !== null) {
+            $mensaje = $resultado['error'];
+        } else {
+            $correoEnviado = $confirmar
+                ? notificarConfirmacion($resultado['cita'])
+                : notificarRechazo($resultado['cita']);
+            $tipo = $correoEnviado ? 'ok' : 'error';
+            $mensaje = $confirmar
+                ? 'Confirmaste la asesoría.'
+                : 'Rechazaste la solicitud. El horario volvió a quedar libre.';
+            if (!$correoEnviado) {
+                $mensaje .= ' No pudimos enviar el aviso al cliente.';
+            }
+        }
     } elseif ($accion === 'cancelar_cita') {
         $resultado = cancelarReservaAnfitrion($citaId);
         if ($resultado['error'] !== null) {
@@ -103,8 +120,8 @@ abrirPagina('Agenda');
       <li class="franja <?= e($bloque['estado']) ?>">
         <div>
           <strong><?= e($bloque['etiqueta']) ?></strong>
-          <?php if ($bloque['estado'] === 'reservado'): ?>
-            <span class="estado">Reservado por <?= e((string) $bloque['cliente']) ?></span>
+          <?php if ($bloque['estado'] === 'espera' || $bloque['estado'] === 'reservado'): ?>
+            <span class="estado"><?= $bloque['estado'] === 'espera' ? 'En espera' : 'Reservado' ?> por <?= e((string) $bloque['cliente']) ?></span>
             <span><?= e(etiquetaServicio($bloque['servicio'] ?? null)) ?></span>
             <?php if ($bloque['telefono'] || $bloque['email']): ?>
               <span class="nota">
@@ -137,6 +154,21 @@ abrirPagina('Agenda');
               <input type="hidden" name="hora" value="<?= e($bloque['hora']) ?>">
               <input type="hidden" name="accion" value="abrir">
               <button class="boton secundario" type="submit">Abrir</button>
+            </form>
+          <?php elseif ($bloque['estado'] === 'espera'): ?>
+            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Confirmar la asesoría de ' . $bloque['cliente'] . ' del ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">
+              <?= campoCsrf() ?>
+              <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
+              <input type="hidden" name="cita_id" value="<?= e((string) $bloque['cita_id']) ?>">
+              <input type="hidden" name="accion" value="confirmar_cita">
+              <button class="boton" type="submit">Confirmar</button>
+            </form>
+            <form method="post" action="agenda.php" data-confirmar="<?= e('¿Rechazar la solicitud de ' . $bloque['cliente'] . ' del ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">
+              <?= campoCsrf() ?>
+              <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
+              <input type="hidden" name="cita_id" value="<?= e((string) $bloque['cita_id']) ?>">
+              <input type="hidden" name="accion" value="rechazar_cita">
+              <button class="boton peligro" type="submit">Rechazar</button>
             </form>
           <?php elseif ($bloque['estado'] === 'reservado'): ?>
             <form method="post" action="agenda.php" data-confirmar="<?= e('¿Cancelar la asesoría de ' . $bloque['cliente'] . ' del ' . fechaLarga($fecha) . ' a las ' . $bloque['etiqueta'] . '?') ?>">

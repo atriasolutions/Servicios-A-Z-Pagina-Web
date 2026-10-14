@@ -152,3 +152,75 @@
   mostrar();
   reanudar();
 })();
+
+(function () {
+  var cuadro = document.querySelector('textarea[name="cuerpo"]');
+  var barra = document.querySelector("[data-formato]");
+  if (!cuadro || !barra) {
+    return;
+  }
+
+  function reemplazar(desde, hasta, nuevo, seleccionarDesde, seleccionarHasta) {
+    var texto = cuadro.value;
+    cuadro.value = texto.slice(0, desde) + nuevo + texto.slice(hasta);
+    cuadro.focus();
+    cuadro.setSelectionRange(seleccionarDesde, seleccionarHasta);
+  }
+
+  function envolver(antes, despues) {
+    var inicio = cuadro.selectionStart;
+    var fin = cuadro.selectionEnd;
+    var elegido = cuadro.value.slice(inicio, fin);
+    reemplazar(inicio, fin, antes + elegido + despues, inicio + antes.length, inicio + antes.length + elegido.length);
+  }
+
+  function lista() {
+    var inicio = cuadro.selectionStart;
+    var fin = cuadro.selectionEnd;
+    var texto = cuadro.value;
+    var desde = texto.lastIndexOf("\n", Math.max(0, inicio - 1)) + 1;
+    var hasta = texto.indexOf("\n", fin);
+    if (hasta < 0) {
+      hasta = texto.length;
+    }
+    var nuevo = texto.slice(desde, hasta).split("\n").map(function (linea) {
+      return linea.indexOf("- ") === 0 ? linea : "- " + linea;
+    }).join("\n");
+    reemplazar(desde, hasta, nuevo, desde, desde + nuevo.length);
+  }
+
+  function enlace() {
+    var inicio = cuadro.selectionStart;
+    var fin = cuadro.selectionEnd;
+    var elegido = cuadro.value.slice(inicio, fin);
+    var direccion = window.prompt("Dirección del enlace (https://)");
+    if (!direccion) {
+      return;
+    }
+    direccion = direccion.trim();
+    if (!/^https?:\/\//i.test(direccion)) {
+      window.alert("La dirección tiene que empezar por http:// o https://.");
+      return;
+    }
+    var visible = elegido || "enlace";
+    var marca = "[" + visible + "](" + direccion + ")";
+    reemplazar(inicio, fin, marca, inicio + 1, inicio + 1 + visible.length);
+  }
+
+  barra.addEventListener("click", function (evento) {
+    var boton = evento.target.closest("button[data-marca]");
+    if (!boton) {
+      return;
+    }
+    var marca = boton.getAttribute("data-marca");
+    if (marca === "negrita") {
+      envolver("**", "**");
+    } else if (marca === "cursiva") {
+      envolver("*", "*");
+    } else if (marca === "lista") {
+      lista();
+    } else if (marca === "enlace") {
+      enlace();
+    }
+  });
+})();

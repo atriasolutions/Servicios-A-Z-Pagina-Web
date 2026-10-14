@@ -3,6 +3,13 @@ DirectoryIndex public/index.php
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  RewriteCond %{HTTP_HOST} ^scontablesayz\.cl$ [NC]
+  RewriteRule ^ https://www.scontablesayz.cl%{REQUEST_URI} [R=301,L]
+
+  RewriteCond %{HTTP_HOST} ^www\.scontablesayz\.cl$ [NC]
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://www.scontablesayz.cl%{REQUEST_URI} [R=301,L]
+
   RewriteRule ^(src|config|sql|datos-mysql|datos-cache|\.cursor)(/|$) - [F,L]
   RewriteRule ^public/ - [L]
 

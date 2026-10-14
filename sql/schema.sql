@@ -24,11 +24,20 @@ CREATE TABLE IF NOT EXISTS citas (
   cliente_telefono VARCHAR(40) NOT NULL,
   fecha DATE NOT NULL,
   hora_inicio TIME NOT NULL,
-  servicio ENUM('gestion_tributaria', 'contabilidad_financiera', 'gestion_remuneraciones') NULL,
-  estado ENUM('reservada', 'cancelada') NOT NULL DEFAULT 'reservada',
+  servicio ENUM(
+    'gestion_tributaria',
+    'contabilidad_financiera',
+    'gestion_remuneraciones',
+    'constitucion_empresas',
+    'contabilidad',
+    'asesoria_laboral',
+    'operacion_renta'
+  ) NULL,
+  estado ENUM('pendiente', 'reservada', 'cancelada') NOT NULL DEFAULT 'reservada',
+  token_hash CHAR(64) NULL,
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   activo TINYINT
-    AS (IF(estado = 'reservada', 1, NULL)) STORED,
+    AS (IF(estado IN ('pendiente', 'reservada'), 1, NULL)) STORED,
   UNIQUE KEY uniq_cupo (fecha, hora_inicio, activo),
   KEY idx_citas_usuario (usuario_id),
   KEY idx_citas_fecha (fecha, hora_inicio),
@@ -41,4 +50,11 @@ CREATE TABLE IF NOT EXISTS bloqueos (
   fecha DATE NOT NULL,
   hora_inicio TIME NOT NULL,
   UNIQUE KEY uniq_bloqueo (fecha, hora_inicio)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS articulos (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(160) NOT NULL,
+  cuerpo TEXT NOT NULL,
+  publicado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -27,16 +27,18 @@ En el servidor se crea otro config.php a partir de config.example.php.
 
    Si actualizas una instalación que ya tenía citas, no vuelvas a importar
    schema.sql. Importa una sola vez sql/migracion-reservas-publicas.sql.
+   Para la página de artículos, importa una sola vez sql/migracion-articulos.sql.
+   Para confirmar las reservas desde el correo, importa una sola vez sql/migracion-confirmacion.sql.
 
 4. En el administrador de archivos, copia config/config.example.php
    a config/config.php. Edita config.php con el host localhost,
    el puerto 3306 y los datos del paso 2.
    El nombre del sitio y el horario también se cambian en ese archivo.
 
-   Los avisos de reservas salen por FormSubmit al correo indicado en
-   correo.administrador. La primera reserva hace que FormSubmit envíe un
-   enlace de activación a esa cuenta de Gmail. Hay que abrirlo una sola vez
-   para que los avisos siguientes lleguen al administrador y al cliente.
+   Los avisos de reservas salen desde el Gmail indicado en correo.administrador.
+   El envío usa smtp.gmail.com por el puerto seguro 465.
+   En esa cuenta de Google crea una contraseña de aplicación y pégala en
+   correo.smtp_clave. No uses la contraseña normal de Gmail.
 
 5. Activa el certificado SSL del dominio (AutoSSL o «SSL/TLS»).
    El sitio debe abrirse con https://.
@@ -47,9 +49,9 @@ En el servidor se crea otro config.php a partir de config.example.php.
 Cuenta de Servicios Contables A&Z
 --------------------
 Correo: mmb21894@gmail.com
-Contraseña inicial: Anfitrion.local
+La contraseña está cifrada en sql/anfitrion.sql.
 
-Cámbiala cuando el sitio esté en internet. Los clientes reservan sin crear
-una cuenta; este ingreso es solo para administrar la agenda.
+Los clientes reservan sin crear una cuenta; este ingreso es solo para
+administrar la agenda.
 
 Si ya había otro sitio en public_html, guarda una copia antes de subir estos archivos.

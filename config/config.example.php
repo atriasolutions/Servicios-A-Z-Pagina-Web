@@ -18,6 +18,8 @@ return [
     ],
     'sitio' => [
         'nombre' => 'Servicios Contables A&Z',
+        // Dirección pública de los enlaces en los correos. Las pruebas en 127.0.0.1 usan la local.
+        'url' => 'https://www.scontablesayz.cl',
     ],
     'agenda' => [
         'hora_inicio' => 10,
@@ -25,10 +27,12 @@ return [
         'duracion_minutos' => 60,
         'meses_anticipacion' => 1,
         'dias' => [1, 2, 3, 4, 5],
-        'timezone' => 'America/Argentina/Buenos_Aires',
+        'timezone' => 'America/Santiago',
     ],
     'correo' => [
         'administrador' => 'mmb21894@gmail.com',
+        // Contraseña de aplicación de Gmail. No es la contraseña normal de la cuenta.
+        'smtp_clave' => '',
     ],
     // Lista de profesionales del inicio. Si está vacía, esa sección no se muestra.
     // Cada entrada usa nombre, cargo, descripcion y foto.

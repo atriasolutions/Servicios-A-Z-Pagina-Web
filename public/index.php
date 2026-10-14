@@ -7,9 +7,10 @@ require __DIR__ . '/../src/bootstrap.php';
 $usuario = usuarioActual();
 $nombreSitio = (string) configuracion()['sitio']['nombre'];
 $iconosServicio = [
-    'gestion_tributaria' => 'tributaria',
-    'contabilidad_financiera' => 'financiera',
-    'gestion_remuneraciones' => 'remuneraciones',
+    'constitucion_empresas' => 'cuenta',
+    'contabilidad' => 'financiera',
+    'asesoria_laboral' => 'remuneraciones',
+    'operacion_renta' => 'tributaria',
 ];
 
 $profesionales = [];
@@ -36,7 +37,8 @@ abrirPagina('Inicio', true);
 ?>
 <section class="banner">
   <div class="banner-texto">
-    <h1><?= e($nombreSitio) ?></h1>
+    <h1 class="sr-only"><?= e($nombreSitio) ?></h1>
+    <img class="logo-portada" src="/img/logo-az.png" width="747" height="631" alt="">
     <p><?= e(textoHorario()) ?> Elige el trámite y un horario libre; no necesitas crear una cuenta.</p>
     <div class="acciones">
       <?php if ($usuario && $usuario['rol'] === 'anfitrion'): ?>
@@ -59,6 +61,38 @@ abrirPagina('Inicio', true);
           <a class="boton" href="horarios.php?servicio=<?= e($clave) ?>">Reservar</a>
         </article>
       <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
+<section class="acerca">
+  <div class="seccion-inner texto-presentacion">
+    <h2>Acerca de nosotros</h2>
+    <p>Somos una empresa con más de 8 años de experiencia, en donde nuestro objetivo principal es brindarte tranquilidad, orden fiscal y laboral ante el Servicio de Impuestos Internos (SII) y la Dirección del Trabajo (DT).</p>
+    <p>Entregamos un Servicio profesional personalizado, remoto, eficiente y con un trato cercano para pymes y emprendedores.</p>
+    <p>Llevamos sus registros, preparamos sus estados financieros y le acompañamos en sus obligaciones contables, laborales y tributarias de forma mensual.</p>
+  </div>
+</section>
+
+<section class="contacto">
+  <div class="seccion-inner">
+    <h2>Contacto</h2>
+    <div class="rejilla">
+      <article class="tarjeta-contacto vidrio">
+        <?= icono('whatsapp') ?>
+        <h3>WhatsApp</h3>
+        <a href="https://wa.me/56974531422">+569 74531422</a>
+      </article>
+      <article class="tarjeta-contacto vidrio">
+        <?= icono('direccion') ?>
+        <h3>Dirección</h3>
+        <p>La Serena</p>
+      </article>
+      <article class="tarjeta-contacto vidrio">
+        <?= icono('correo') ?>
+        <h3>Correo</h3>
+        <a href="mailto:servicioscontablesaz@gmail.com">servicioscontablesaz@gmail.com</a>
+      </article>
     </div>
   </div>
 </section>

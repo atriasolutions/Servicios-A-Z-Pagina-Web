@@ -17,8 +17,15 @@ function resumenCita(array $cita): array
 function origenDelSitio(): string
 {
     $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
-    if ($host === '') {
-        return 'http://127.0.0.1';
+    $nombre = strtolower((string) preg_replace('/:\d+$/', '', $host));
+    if ($host === '' || in_array($nombre, ['127.0.0.1', 'localhost', '[::1]'], true)) {
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        return ($https ? 'https://' : 'http://') . ($host === '' ? '127.0.0.1' : $host);
+    }
+
+    $publica = rtrim(trim((string) (configuracion()['sitio']['url'] ?? '')), '/');
+    if (preg_match('#^https://[a-z0-9.-]+$#i', $publica) === 1) {
+        return $publica;
     }
 
     $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
@@ -37,114 +44,215 @@ function correoAdministrador(): ?string
     return $correo;
 }
 
-function enviarFormSubmit(array $campos): bool
+function enlaceDeConfirmacion(array $cita): string
 {
-    $administrador = correoAdministrador();
-    if ($administrador === null || !function_exists('curl_init')) {
-        error_log('No se pudo preparar el aviso por FormSubmit.');
+    $consulta = http_build_query([
+        'cita' => (int) $cita['id'],
+        'token' => (string) ($cita['token'] ?? ''),
+    ]);
+
+    return origenDelSitio() . '/confirmar.php?' . $consulta;
+}
+
+function datosDeCita(array $cita): string
+{
+    $resumen = resumenCita($cita);
+
+    return 'Servicio: ' . $resumen['servicio'] . "\n"
+        . 'Fecha: ' . $resumen['fecha'] . "\n"
+        . 'Hora: ' . $resumen['hora'];
+}
+
+function enviarCorreo(string $destino, string $asunto, string $texto, ?string $responderA = null): bool
+{
+    $desde = correoAdministrador();
+    $clave = str_replace(' ', '', trim((string) (configuracion()['correo']['smtp_clave'] ?? '')));
+    if ($desde === null || $clave === '' || filter_var($destino, FILTER_VALIDATE_EMAIL) === false) {
+        error_log('Falta la contraseña de aplicación o el destinatario no es válido.');
         return false;
     }
 
-    $cuerpo = json_encode($campos, JSON_UNESCAPED_UNICODE);
-    if ($cuerpo === false) {
-        return false;
-    }
-
-    $url = 'https://formsubmit.co/ajax/' . rawurlencode($administrador);
-    $origen = origenDelSitio();
-    $canal = curl_init($url);
-    if ($canal === false) {
-        return false;
-    }
-
-    $opciones = [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $cuerpo,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Origin: ' . $origen,
+    $contexto = stream_context_create([
+        'ssl' => [
+            'verify_peer' => true,
+            'verify_peer_name' => true,
         ],
-        CURLOPT_REFERER => $origen . '/',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 2,
-        CURLOPT_TIMEOUT => 8,
-        CURLOPT_CONNECTTIMEOUT => 4,
-        CURLOPT_USERAGENT => 'ServiciosContablesAZ/1.0',
-    ];
-    if (defined('CURLPROTO_HTTPS')) {
-        $opciones[CURLOPT_PROTOCOLS] = CURLPROTO_HTTPS;
-        $opciones[CURLOPT_REDIR_PROTOCOLS] = CURLPROTO_HTTPS;
-    }
-    curl_setopt_array($canal, $opciones);
-
-    $respuesta = curl_exec($canal);
-    $final = (string) curl_getinfo($canal, CURLINFO_EFFECTIVE_URL);
-    $codigo = (int) curl_getinfo($canal, CURLINFO_RESPONSE_CODE);
-    curl_close($canal);
-
-    $host = strtolower((string) (parse_url($final, PHP_URL_HOST) ?? ''));
-    if (!is_string($respuesta) || $codigo < 200 || $codigo >= 300 || !in_array($host, ['formsubmit.co', 'www.formsubmit.co'], true)) {
-        error_log('FormSubmit no respondió correctamente.');
+    ]);
+    $canal = stream_socket_client(
+        'ssl://smtp.gmail.com:465',
+        $errorNumero,
+        $errorTexto,
+        8,
+        STREAM_CLIENT_CONNECT,
+        $contexto
+    );
+    if ($canal === false) {
+        error_log('No se pudo conectar con el servidor de correo.');
         return false;
     }
 
-    $datos = json_decode($respuesta, true);
-    $exito = is_array($datos) ? ($datos['success'] ?? false) : false;
-    if ($exito === true || $exito === 1 || $exito === '1' || $exito === 'true') {
-        return true;
+    stream_set_timeout($canal, 8);
+    $saludo = smtpLeer($canal);
+    $enviado = str_starts_with($saludo, '220')
+        && smtpOrden($canal, 'EHLO servicioscontablesaz', [250])
+        && smtpOrden($canal, 'AUTH LOGIN', [334])
+        && smtpOrden($canal, base64_encode($desde), [334])
+        && smtpOrden($canal, base64_encode($clave), [235])
+        && smtpOrden($canal, 'MAIL FROM:<' . $desde . '>', [250])
+        && smtpOrden($canal, 'RCPT TO:<' . $destino . '>', [250, 251])
+        && smtpOrden($canal, 'DATA', [354])
+        && smtpOrden($canal, mensajeSmtp($desde, $destino, $asunto, $texto, $responderA) . "\r\n.", [250]);
+    smtpOrden($canal, 'QUIT', [221]);
+    fclose($canal);
+
+    if (!$enviado) {
+        error_log('No se pudo entregar el aviso a ' . $destino . '.');
     }
 
-    $mensaje = is_array($datos) ? (string) ($datos['message'] ?? '') : '';
-    error_log('FormSubmit rechazó el aviso.' . ($mensaje !== '' ? ' ' . $mensaje : ''));
-    return false;
+    return $enviado;
+}
+
+function smtpLeer($canal): string
+{
+    $respuesta = '';
+    while (($linea = fgets($canal, 515)) !== false) {
+        $respuesta .= $linea;
+        if (isset($linea[3]) && $linea[3] === ' ') {
+            break;
+        }
+    }
+
+    return $respuesta;
+}
+
+function smtpOrden($canal, string $orden, array $esperados): bool
+{
+    if (fwrite($canal, $orden . "\r\n") === false) {
+        return false;
+    }
+
+    $codigo = (int) substr(smtpLeer($canal), 0, 3);
+    if (!in_array($codigo, $esperados, true)) {
+        error_log('El servidor de correo respondió ' . $codigo . '.');
+        return false;
+    }
+
+    return true;
+}
+
+function mensajeSmtp(string $desde, string $destino, string $asunto, string $texto, ?string $responderA): string
+{
+    $sitio = (string) configuracion()['sitio']['nombre'];
+    $lineas = [
+        'Date: ' . date(DATE_RFC2822),
+        'From: ' . encabezadoCodificado($sitio) . ' <' . $desde . '>',
+        'To: <' . $destino . '>',
+        'Subject: ' . encabezadoCodificado($asunto),
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+    ];
+    if ($responderA !== null && filter_var($responderA, FILTER_VALIDATE_EMAIL) !== false) {
+        $lineas[] = 'Reply-To: <' . $responderA . '>';
+    }
+
+    $cuerpo = rtrim(chunk_split(base64_encode($texto), 76, "\r\n"));
+    $mensaje = implode("\r\n", $lineas) . "\r\n\r\n" . $cuerpo;
+    $protegido = preg_replace('/^\./m', '..', $mensaje);
+
+    return $protegido ?? $mensaje;
+}
+
+function encabezadoCodificado(string $texto): string
+{
+    if (preg_match('/^[\x20-\x7E]+$/', $texto) === 1) {
+        return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $texto) . '"';
+    }
+
+    return '=?UTF-8?B?' . base64_encode($texto) . '?=';
 }
 
 function notificarReserva(array $cita): bool
 {
+    $administrador = correoAdministrador();
     $resumen = resumenCita($cita);
     $sitio = (string) configuracion()['sitio']['nombre'];
+    $cuando = $resumen['fecha'] . ' a las ' . $resumen['hora'];
+    if ($administrador === null) {
+        return false;
+    }
 
-    return enviarFormSubmit([
-        'name' => (string) $cita['cliente_nombre'],
-        'email' => (string) $cita['cliente_email'],
-        '_replyto' => (string) $cita['cliente_email'],
-        '_subject' => 'Nueva reserva: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'],
-        '_template' => 'box',
-        '_captcha' => 'false',
-        '_autoresponse' => 'Hola ' . $cita['cliente_nombre'] . '. Tu reserva en ' . $sitio
-            . ' quedó confirmada. Servicio: ' . $resumen['servicio']
-            . '. Fecha: ' . $resumen['fecha'] . '. Hora: ' . $resumen['hora'] . '.',
-        'Nombre' => (string) $cita['cliente_nombre'],
-        'Correo' => (string) $cita['cliente_email'],
-        'Teléfono' => (string) $cita['cliente_telefono'],
-        'Servicio' => $resumen['servicio'],
-        'Fecha' => $resumen['fecha'],
-        'Hora' => $resumen['hora'],
-    ]);
+    $alAdministrador = enviarCorreo(
+        $administrador,
+        'Solicitud de reserva: ' . $cuando,
+        "Hay una solicitud de reserva en {$sitio}.\n\n"
+            . 'Nombre: ' . $cita['cliente_nombre'] . "\n"
+            . 'Correo: ' . $cita['cliente_email'] . "\n"
+            . 'Teléfono: ' . $cita['cliente_telefono'] . "\n"
+            . datosDeCita($cita) . "\n\n"
+            . "Para confirmar o rechazar la solicitud, abre este enlace:\n"
+            . enlaceDeConfirmacion($cita),
+        (string) $cita['cliente_email']
+    );
+    $alCliente = enviarCorreo(
+        (string) $cita['cliente_email'],
+        'Solicitud en espera: ' . $cuando,
+        'Hola ' . $cita['cliente_nombre'] . ".\n\n"
+            . "Recibimos tu solicitud en {$sitio}. Todavía está en espera de confirmación.\n\n"
+            . datosDeCita($cita) . "\n\n"
+            . 'Te avisaremos cuando quede confirmada.',
+        $administrador
+    );
+
+    return $alAdministrador && $alCliente;
 }
 
-function notificarCancelacion(array $cita): bool
+function notificarConfirmacion(array $cita): bool
 {
     $resumen = resumenCita($cita);
     $sitio = (string) configuracion()['sitio']['nombre'];
 
-    return enviarFormSubmit([
-        'name' => (string) $cita['cliente_nombre'],
-        'email' => (string) $cita['cliente_email'],
-        '_replyto' => (string) $cita['cliente_email'],
-        '_subject' => 'Reserva cancelada: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'],
-        '_template' => 'box',
-        '_captcha' => 'false',
-        '_autoresponse' => 'Hola ' . $cita['cliente_nombre'] . '. Tu reserva en ' . $sitio
-            . ' fue cancelada. Servicio: ' . $resumen['servicio']
-            . '. Fecha: ' . $resumen['fecha'] . '. Hora: ' . $resumen['hora'] . '.',
-        'Nombre' => (string) $cita['cliente_nombre'],
-        'Correo' => (string) $cita['cliente_email'],
-        'Teléfono' => (string) $cita['cliente_telefono'],
-        'Servicio' => $resumen['servicio'],
-        'Fecha' => $resumen['fecha'],
-        'Hora' => $resumen['hora'],
-    ]);
+    return enviarCorreo(
+        (string) $cita['cliente_email'],
+        'Reserva confirmada: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'],
+        'Hola ' . $cita['cliente_nombre'] . ".\n\n"
+            . "Tu reserva en {$sitio} quedó confirmada.\n\n"
+            . datosDeCita($cita),
+        correoAdministrador()
+    );
+}
+
+function notificarRechazo(array $cita): bool
+{
+    $resumen = resumenCita($cita);
+    $sitio = (string) configuracion()['sitio']['nombre'];
+
+    return enviarCorreo(
+        (string) $cita['cliente_email'],
+        'Solicitud no confirmada: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'],
+        'Hola ' . $cita['cliente_nombre'] . ".\n\n"
+            . "Tu solicitud en {$sitio} no fue confirmada.\n\n"
+            . datosDeCita($cita) . "\n\n"
+            . 'Ese horario volvió a quedar libre.',
+        correoAdministrador()
+    );
+}
+
+function notificarCancelacion(array $cita): bool
+{
+    $administrador = correoAdministrador();
+    $resumen = resumenCita($cita);
+    $sitio = (string) configuracion()['sitio']['nombre'];
+    $asunto = 'Reserva cancelada: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'];
+    $texto = 'Hola ' . $cita['cliente_nombre'] . ".\n\n"
+        . "La reserva en {$sitio} fue cancelada.\n\n"
+        . datosDeCita($cita);
+    if ($administrador === null) {
+        return false;
+    }
+
+    $alCliente = enviarCorreo((string) $cita['cliente_email'], $asunto, $texto, $administrador);
+    $alAdministrador = enviarCorreo($administrador, $asunto, $texto, (string) $cita['cliente_email']);
+
+    return $alCliente && $alAdministrador;
 }

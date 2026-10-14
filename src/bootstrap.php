@@ -73,5 +73,6 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/agenda.php';
 require __DIR__ . '/correo.php';
 require __DIR__ . '/noticias.php';
+require __DIR__ . '/articulos.php';
 require __DIR__ . '/vite.php';
 require __DIR__ . '/vista.php';
