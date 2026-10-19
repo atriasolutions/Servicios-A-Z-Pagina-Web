@@ -178,7 +178,7 @@ function cerrarPagina(): void
     $nombreSitio = (string) configuracion()['sitio']['nombre'];
 
     $actual = basename($_SERVER['SCRIPT_NAME'] ?? '');
-    $paginasAdmin = ['agenda.php', 'chat.php', 'confirmar.php', 'articulos-admin.php', 'articulo-editar.php'];
+    $paginasAdmin = ['agenda.php', 'chat.php', 'articulos-admin.php', 'articulo-editar.php'];
 
     echo '</main>';
     if (in_array($actual, $paginasAdmin, true)) {

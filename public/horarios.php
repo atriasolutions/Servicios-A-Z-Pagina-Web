@@ -58,20 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errores[] = $resultado['error'];
             } else {
                 $cita = $resultado['cita'];
-                $correoAdministrador = notificarSolicitudAdministrador($cita);
-                if (!$correoAdministrador) {
-                    $liberada = koraAnularReserva((string) ($cita['kora_id'] ?? ''));
-                    if ($liberada) {
-                        resolverSolicitud((int) $cita['id'], 'cancelada', (string) $cita['token']);
-                    }
-                    aviso(
-                        'error',
-                        $liberada
-                            ? 'No pudimos enviar la solicitud para aprobación. El horario sigue disponible; intenta de nuevo.'
-                            : 'No pudimos enviar la solicitud para aprobación. El horario quedó retenido; intenta de nuevo más tarde.'
-                    );
-                    redirigir('horarios.php?fecha=' . urlencode((string) $cita['fecha']) . '&servicio=' . urlencode($servicio));
-                }
                 $correoCliente = notificarSolicitudCliente($cita);
                 $dia = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $cita['fecha'], zonaHoraria());
                 $mensaje = 'Recibimos tu solicitud de ' . etiquetaServicio($servicio) . ' para el '

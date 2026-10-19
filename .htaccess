@@ -10,7 +10,7 @@ DirectoryIndex public/index.php
   RewriteCond %{HTTPS} off
   RewriteRule ^ https://www.scontablesayz.cl%{REQUEST_URI} [R=301,L]
 
-  RewriteRule ^(src|config|sql|datos-mysql|datos-cache|\.cursor)(/|$) - [F,L]
+  RewriteRule ^(src|config|sql|scripts|datos-mysql|datos-cache|\.cursor)(/|$) - [F,L]
   RewriteRule ^public/ - [L]
 
   RewriteCond %{REQUEST_FILENAME} !-f

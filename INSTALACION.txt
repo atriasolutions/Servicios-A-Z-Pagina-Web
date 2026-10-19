@@ -29,6 +29,8 @@ En el servidor se crea otro config.php a partir de config.example.php.
    schema.sql. Importa una sola vez sql/migracion-reservas-publicas.sql.
    Para la página de artículos, importa una sola vez sql/migracion-articulos.sql.
    Para confirmar las reservas desde el correo, importa una sola vez sql/migracion-confirmacion.sql.
+   Para confirmar las reservas desde Kora, importa una sola vez
+   sql/migracion-confirmacion-kora.sql.
 
 4. En el administrador de archivos, copia config/config.example.php
    a config/config.php. Edita config.php con el host localhost,
@@ -40,10 +42,25 @@ En el servidor se crea otro config.php a partir de config.example.php.
    En esa cuenta de Google crea una contraseña de aplicación y pégala en
    correo.smtp_clave. No uses la contraseña normal de Gmail.
 
-5. Activa el certificado SSL del dominio (AutoSSL o «SSL/TLS»).
+5. En Kora, abre Configuración > API y webhooks y crea un webhook:
+   - URL: https://www.scontablesayz.cl/kora-webhook.php
+   - Evento: reservation.status_changed
+   - Copia el secreto del webhook en kora.webhook_secreto de config.php.
+   No uses como secreto la llave de la API.
+   Envía la prueba de Kora y comprueba que el webhook responda correctamente.
+
+6. En «Trabajos de cron» de cPanel crea una tarea cada minuto. Sustituye
+   USUARIO y, si corresponde, la ruta del ejecutable PHP:
+
+   * * * * * /usr/local/bin/php /home/USUARIO/public_html/scripts/procesar-notificaciones-kora.php
+
+   El proceso entrega los correos pendientes de confirmación o anulación
+   y reintenta temporalmente cuando Gmail no responde.
+
+7. Activa el certificado SSL del dominio (AutoSSL o «SSL/TLS»).
    El sitio debe abrirse con https://.
 
-6. Abre el dominio en el navegador. La dirección pública es la raíz
+8. Abre el dominio en el navegador. La dirección pública es la raíz
    del dominio, no una carpeta llamada public.
 
 Cuenta de Servicios Contables A&Z

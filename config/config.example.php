@@ -40,6 +40,8 @@ return [
         'url' => 'https://atriasolutions.koracrm.cl/api/public/v1',
         'llave' => '',
         'calendario' => '13be6a3e-4c0f-47e9-a588-869967d76950',
+        // Se genera al crear el webhook en Kora. No uses aquí la llave de la API.
+        'webhook_secreto' => '',
     ],
     'correo' => [
         'administrador' => 'mmb21894@gmail.com',

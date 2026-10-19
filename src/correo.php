@@ -46,16 +46,6 @@ function correoAdministrador(): ?string
     return $correo;
 }
 
-function enlaceDeConfirmacion(array $cita): string
-{
-    $consulta = http_build_query([
-        'cita' => (int) $cita['id'],
-        'token' => (string) ($cita['token'] ?? ''),
-    ]);
-
-    return origenDelSitio() . '/confirmar.php?' . $consulta;
-}
-
 function datosDeCita(array $cita): string
 {
     $resumen = resumenCita($cita);
@@ -361,45 +351,12 @@ function correoHtml(array $aviso): string
         . '</table></td></tr></table></body></html>';
 }
 
-function notificarSolicitudAdministrador(array $cita): bool
-{
-    $administrador = correoAdministrador();
-    if ($administrador === null) {
-        return false;
-    }
-
-    $resumen = resumenCita($cita);
-    $enlace = enlaceDeConfirmacion($cita);
-    $filas = filasDeCita($cita, true);
-    $nota = 'El enlace abre una página de revisión; no confirma la cita por sí solo.';
-    $texto = "Hay una nueva solicitud de asesoría pendiente de aprobación.\n\n"
-        . textoDeFilas($filas) . "\n\n"
-        . "Revisar solicitud: {$enlace}\n"
-        . $nota;
-
-    return enviarCorreo(
-        $administrador,
-        'Solicitud pendiente: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'],
-        $texto,
-        (string) $cita['cliente_email'],
-        correoHtml([
-            'preheader' => 'Hay una solicitud pendiente de revisión.',
-            'estado' => 'pendiente',
-            'titulo' => 'Nueva solicitud de asesoría',
-            'parrafos' => ['Hay una nueva solicitud pendiente de aprobación.'],
-            'filas' => $filas,
-            'boton' => ['texto' => 'Revisar solicitud', 'url' => $enlace],
-            'nota' => $nota,
-        ])
-    );
-}
-
 function notificarSolicitudCliente(array $cita): bool
 {
     $resumen = resumenCita($cita);
     $sitio = (string) configuracion()['sitio']['nombre'];
     $filas = filasDeCita($cita);
-    $cierre = 'Te enviaremos otro correo cuando sea aprobada o rechazada.';
+    $cierre = 'Te enviaremos otro correo cuando la cita sea confirmada o anulada desde Kora.';
     $texto = 'Hola ' . $cita['cliente_nombre'] . ".\n\n"
         . "Recibimos tu solicitud de asesoría en {$sitio}. La hora quedó retenida y está pendiente de confirmación.\n\n"
         . textoDeFilas($filas) . "\n\n"
@@ -560,26 +517,28 @@ function notificarCancelacion(array $cita): bool
     $resumen = resumenCita($cita);
     $sitio = (string) configuracion()['sitio']['nombre'];
     $asunto = 'Reserva cancelada: ' . $resumen['fecha'] . ' a las ' . $resumen['hora'];
-    $filas = filasDeCita($cita, true);
+    $filas = filasDeCita($cita);
+    $otroHorario = urlPublica() . '/horarios.php';
     $texto = 'Hola ' . $cita['cliente_nombre'] . ".\n\n"
-        . "La reserva en {$sitio} fue cancelada.\n\n"
-        . textoDeFilas($filas);
+        . "La cita solicitada en {$sitio} fue anulada.\n\n"
+        . textoDeFilas($filas) . "\n\n"
+        . "El horario volvió a quedar disponible.\n"
+        . 'Elegir otro horario: ' . $otroHorario;
     $html = correoHtml([
-        'preheader' => 'La reserva fue cancelada.',
+        'preheader' => 'La cita solicitada fue anulada.',
         'estado' => 'cancelada',
-        'titulo' => 'La reserva fue cancelada',
+        'titulo' => 'La cita fue anulada',
         'parrafos' => [
             'Hola ' . $cita['cliente_nombre'] . '.',
-            "La reserva en {$sitio} fue cancelada.",
+            "La cita solicitada en {$sitio} fue anulada.",
+            'El horario volvió a quedar disponible.',
         ],
         'filas' => $filas,
+        'enlace' => ['texto' => 'Elegir otro horario', 'url' => $otroHorario],
     ]);
     if ($administrador === null) {
         return false;
     }
 
-    $alCliente = enviarCorreo((string) $cita['cliente_email'], $asunto, $texto, $administrador, $html);
-    $alAdministrador = enviarCorreo($administrador, $asunto, $texto, (string) $cita['cliente_email'], $html);
-
-    return $alCliente && $alAdministrador;
+    return enviarCorreo((string) $cita['cliente_email'], $asunto, $texto, $administrador, $html);
 }

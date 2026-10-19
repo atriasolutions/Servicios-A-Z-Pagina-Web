@@ -75,7 +75,7 @@ abrirPagina('Agenda');
           <li class="franja reservado">
             <div>
               <strong><?= e($reserva['hora']) ?></strong>
-              <span class="estado"><?= e($reserva['estado'] === 'pendiente' ? 'Pendiente de aprobación' : 'Reservada en Kora') ?></span>
+              <span class="estado"><?= e($reserva['estado'] === 'pendiente' ? 'Reservada, pendiente de confirmación en Kora' : 'Confirmada en Kora') ?></span>
               <span><?= e($reserva['nombre']) ?></span>
               <span><?= e(etiquetaServicio($reserva['servicio'])) ?></span>
               <span class="nota">Tipo: <?= e(etiquetaTipoPersona($reserva['tipo_persona'])) ?></span>

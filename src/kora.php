@@ -337,7 +337,6 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
     }
     $bloque = $obtenido['bloque'];
 
-    $token = bin2hex(random_bytes(32));
     $pdo = base();
     try {
         $alta = $pdo->prepare(
@@ -345,7 +344,7 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
                 (usuario_id, cliente_nombre, cliente_apellido, cliente_email, cliente_telefono,
                  cliente_tipo_persona, fecha, hora_inicio, hora_fin, servicio, estado,
                  token_hash, kora_bloque_id)
-             VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pendiente\', ?, ?)'
+             VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pendiente\', NULL, ?)'
         );
         $alta->execute([
             $cliente['nombre'],
@@ -357,7 +356,6 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
             $bloque['hora'],
             $bloque['hora_fin'],
             $servicio,
-            hash('sha256', $token),
             $bloqueId,
         ]);
     } catch (PDOException $e) {
@@ -436,74 +434,9 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
             'estado' => 'pendiente',
             'kora_bloque_id' => $bloqueId,
             'kora_id' => $koraId,
-            'token' => $token,
             'etiqueta' => $bloque['etiqueta'],
         ],
     ];
-}
-
-function koraSolicitudPendiente(int $citaId, string $token): array
-{
-    $cita = citaPorId($citaId);
-    $hash = hash('sha256', $token);
-    if (
-        !$cita
-        || $cita['estado'] !== 'pendiente'
-        || !is_string($cita['token_hash'])
-        || !hash_equals($cita['token_hash'], $hash)
-    ) {
-        return ['error' => 'Esta solicitud ya no está pendiente.', 'cita' => null];
-    }
-
-    return ['error' => null, 'cita' => $cita];
-}
-
-function koraAprobarSolicitud(int $citaId, string $token): array
-{
-    $pendiente = koraSolicitudPendiente($citaId, $token);
-    if ($pendiente['error'] !== null) {
-        return $pendiente;
-    }
-    $cita = $pendiente['cita'];
-    if (!koraUuidValido((string) ($cita['kora_reserva_id'] ?? ''))) {
-        return [
-            'error' => 'Esta solicitud no tiene una reserva en Kora. Solo puede rechazarse.',
-            'cita' => $cita,
-        ];
-    }
-
-    $actualizar = base()->prepare(
-        'UPDATE citas SET estado = \'reservada\', token_hash = NULL
-         WHERE id = ? AND estado = \'pendiente\' AND token_hash = ?'
-    );
-    $actualizar->execute([$citaId, hash('sha256', $token)]);
-    if ($actualizar->rowCount() !== 1) {
-        return ['error' => 'Esta solicitud ya no está pendiente.', 'cita' => null];
-    }
-
-    $cita['estado'] = 'reservada';
-    unset($cita['token_hash']);
-
-    return ['error' => null, 'cita' => $cita];
-}
-
-function koraRechazarSolicitud(int $citaId, string $token): array
-{
-    $pendiente = koraSolicitudPendiente($citaId, $token);
-    if ($pendiente['error'] !== null) {
-        return $pendiente;
-    }
-
-    $cita = $pendiente['cita'];
-    $koraId = (string) ($cita['kora_reserva_id'] ?? '');
-    if ($koraId !== '' && !koraAnularReserva($koraId)) {
-        return [
-            'error' => 'Kora no pudo liberar el horario. La solicitud sigue pendiente.',
-            'cita' => $cita,
-        ];
-    }
-
-    return resolverSolicitud($citaId, 'cancelada', $token);
 }
 
 function koraReservasLocales(): array
@@ -581,4 +514,262 @@ function koraReservasExternas(): array
     }
 
     return ['error' => null, 'reservas' => $reservas];
+}
+
+function koraWebhookSecreto(): string
+{
+    $kora = configuracion()['kora'] ?? [];
+    $secreto = is_array($kora) ? trim((string) ($kora['webhook_secreto'] ?? '')) : '';
+    if ($secreto === '') {
+        throw new RuntimeException('Falta configurar el secreto del webhook de Kora.');
+    }
+
+    return $secreto;
+}
+
+function koraFirmaWebhookValida(string $cuerpo, string $encabezado, int $tolerancia = 300): bool
+{
+    $partes = [];
+    foreach (explode(',', $encabezado) as $parte) {
+        $par = explode('=', trim($parte), 2);
+        if (count($par) === 2) {
+            $partes[$par[0]] = $par[1];
+        }
+    }
+    $marca = filter_var($partes['t'] ?? null, FILTER_VALIDATE_INT);
+    $firma = strtolower((string) ($partes['v1'] ?? ''));
+    if (!is_int($marca) || abs(time() - $marca) > $tolerancia || preg_match('/^[0-9a-f]{64}$/', $firma) !== 1) {
+        return false;
+    }
+
+    $esperada = hash_hmac('sha256', $marca . '.' . $cuerpo, koraWebhookSecreto());
+
+    return hash_equals($esperada, $firma);
+}
+
+function koraEstadoNormalizado(string $estado): string
+{
+    $estado = strtolower(trim($estado));
+    $estado = strtr($estado, [
+        'á' => 'a',
+        'é' => 'e',
+        'í' => 'i',
+        'ó' => 'o',
+        'ú' => 'u',
+        'ü' => 'u',
+        'ñ' => 'n',
+        '-' => '_',
+        ' ' => '_',
+    ]);
+
+    return match ($estado) {
+        'reserved', 'reservado' => 'reserved',
+        'confirmed', 'confirmado' => 'confirmed',
+        'cancelled', 'canceled', 'cancelado', 'anulado' => 'cancelled',
+        'completed', 'completado' => 'completed',
+        'no_show', 'no_asistio' => 'no_show',
+        default => $estado,
+    };
+}
+
+function koraRegistrarWebhook(array $evento): array
+{
+    $eventoId = trim((string) ($evento['id'] ?? ''));
+    $tipo = trim((string) ($evento['type'] ?? ''));
+    $datos = is_array($evento['data'] ?? null) ? $evento['data'] : [];
+    if ($eventoId === '' || strlen($eventoId) > 100 || $tipo === '') {
+        throw new InvalidArgumentException('El evento de Kora no es válido.');
+    }
+    if ($tipo === 'webhook.ping') {
+        return ['resultado' => 'ping', 'cita_id' => null];
+    }
+    if (
+        $tipo !== 'reservation.status_changed'
+        || (string) ($datos['object'] ?? '') !== 'reservation'
+    ) {
+        return ['resultado' => 'ignorado', 'cita_id' => null];
+    }
+
+    $reservaId = trim((string) ($datos['id'] ?? ''));
+    $estadoCrudo = trim((string) ($datos['status'] ?? ''));
+    $anterior = trim((string) ($datos['previous_status'] ?? ''));
+    if (!koraUuidValido($reservaId) || $estadoCrudo === '') {
+        throw new InvalidArgumentException('El cambio de estado de Kora no es válido.');
+    }
+    $estado = koraEstadoNormalizado($estadoCrudo);
+    $pdo = base();
+    $pdo->beginTransaction();
+    try {
+        $guardar = $pdo->prepare(
+            'INSERT IGNORE INTO kora_eventos
+                (id, tipo, kora_reserva_id, estado, estado_anterior)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $guardar->execute([$eventoId, $tipo, $reservaId, $estadoCrudo, $anterior !== '' ? $anterior : null]);
+        if ($guardar->rowCount() === 0) {
+            $pdo->commit();
+            return ['resultado' => 'duplicado', 'cita_id' => null];
+        }
+
+        $buscar = $pdo->prepare(
+            'SELECT id, estado FROM citas WHERE kora_reserva_id = ? FOR UPDATE'
+        );
+        $buscar->execute([$reservaId]);
+        $cita = $buscar->fetch();
+        if (!is_array($cita)) {
+            $procesado = $pdo->prepare('UPDATE kora_eventos SET procesado_en = CURRENT_TIMESTAMP WHERE id = ?');
+            $procesado->execute([$eventoId]);
+            $pdo->commit();
+            return ['resultado' => 'sin_cita', 'cita_id' => null];
+        }
+
+        $citaId = (int) $cita['id'];
+        $notificacion = null;
+        if ($estado === 'confirmed') {
+            $actualizar = $pdo->prepare(
+                'UPDATE citas SET estado = \'reservada\', token_hash = NULL WHERE id = ?'
+            );
+            $actualizar->execute([$citaId]);
+            $notificacion = 'confirmacion';
+        } elseif ($estado === 'cancelled') {
+            $actualizar = $pdo->prepare(
+                'UPDATE citas SET estado = \'cancelada\', token_hash = NULL WHERE id = ?'
+            );
+            $actualizar->execute([$citaId]);
+            $notificacion = 'anulacion';
+        }
+
+        if ($notificacion !== null) {
+            $encolar = $pdo->prepare(
+                'INSERT IGNORE INTO cola_notificaciones (cita_id, tipo) VALUES (?, ?)'
+            );
+            $encolar->execute([$citaId, $notificacion]);
+        }
+        $procesado = $pdo->prepare('UPDATE kora_eventos SET procesado_en = CURRENT_TIMESTAMP WHERE id = ?');
+        $procesado->execute([$eventoId]);
+        $pdo->commit();
+
+        return [
+            'resultado' => $notificacion !== null ? 'encolado' : 'registrado',
+            'cita_id' => $citaId,
+        ];
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function koraTomarNotificacion(): ?array
+{
+    $pdo = base();
+    $token = koraUuid();
+    $tomar = $pdo->prepare(
+        'UPDATE cola_notificaciones
+         SET estado = \'procesando\', bloqueo_token = ?, bloqueada_en = CURRENT_TIMESTAMP,
+             intentos = intentos + 1
+         WHERE id = (
+             SELECT id FROM (
+                 SELECT id
+                 FROM cola_notificaciones
+                 WHERE intentos < 8
+                   AND disponible_desde <= CURRENT_TIMESTAMP
+                   AND (
+                       estado = \'pendiente\'
+                       OR (estado = \'procesando\' AND bloqueada_en < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))
+                   )
+                 ORDER BY id
+                 LIMIT 1
+             ) AS siguiente
+         )'
+    );
+    $tomar->execute([$token]);
+    if ($tomar->rowCount() !== 1) {
+        return null;
+    }
+
+    $consulta = $pdo->prepare(
+        'SELECT id, cita_id, tipo, intentos
+         FROM cola_notificaciones
+         WHERE bloqueo_token = ? AND estado = \'procesando\''
+    );
+    $consulta->execute([$token]);
+    $trabajo = $consulta->fetch();
+    if (!is_array($trabajo)) {
+        return null;
+    }
+    $trabajo['bloqueo_token'] = $token;
+    $trabajo['cita'] = citaPorId((int) $trabajo['cita_id']);
+
+    return $trabajo;
+}
+
+function koraFinalizarNotificacion(array $trabajo, bool $enviada, ?string $error = null): void
+{
+    $pdo = base();
+    if ($enviada) {
+        $actualizar = $pdo->prepare(
+            'UPDATE cola_notificaciones
+             SET estado = \'enviado\', enviada_en = CURRENT_TIMESTAMP,
+                 bloqueo_token = NULL, bloqueada_en = NULL, ultimo_error = NULL
+             WHERE id = ? AND bloqueo_token = ?'
+        );
+        $actualizar->execute([(int) $trabajo['id'], (string) $trabajo['bloqueo_token']]);
+        return;
+    }
+
+    $intentos = (int) ($trabajo['intentos'] ?? 1);
+    $minutos = min(60, 2 ** min($intentos, 6));
+    $actualizar = $pdo->prepare(
+        'UPDATE cola_notificaciones
+         SET estado = \'pendiente\',
+             disponible_desde = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? MINUTE),
+             bloqueo_token = NULL,
+             bloqueada_en = NULL, ultimo_error = ?
+         WHERE id = ? AND bloqueo_token = ?'
+    );
+    $actualizar->execute([
+        $minutos,
+        mb_substr((string) $error, 0, 500),
+        (int) $trabajo['id'],
+        (string) $trabajo['bloqueo_token'],
+    ]);
+}
+
+function koraProcesarCola(int $limite = 20): array
+{
+    $procesadas = 0;
+    $fallidas = 0;
+    while ($procesadas + $fallidas < $limite) {
+        $trabajo = koraTomarNotificacion();
+        if ($trabajo === null) {
+            break;
+        }
+        $cita = $trabajo['cita'] ?? null;
+        $tipo = (string) ($trabajo['tipo'] ?? '');
+        if (!is_array($cita)) {
+            koraFinalizarNotificacion($trabajo, false, 'La cita ya no existe.');
+            $fallidas++;
+            continue;
+        }
+
+        try {
+            $enviada = $tipo === 'confirmacion'
+                ? notificarConfirmacion($cita)
+                : ($tipo === 'anulacion' && notificarCancelacion($cita));
+            koraFinalizarNotificacion(
+                $trabajo,
+                $enviada,
+                $enviada ? null : 'El servidor SMTP no aceptó el correo.'
+            );
+            $enviada ? $procesadas++ : $fallidas++;
+        } catch (Throwable $e) {
+            error_log('No se pudo procesar una notificación de Kora: ' . $e->getMessage());
+            koraFinalizarNotificacion($trabajo, false, $e->getMessage());
+            $fallidas++;
+        }
+    }
+
+    return ['procesadas' => $procesadas, 'fallidas' => $fallidas];
 }
