@@ -133,8 +133,10 @@ function cargarPeriodo(): array
     $consulta = base()->prepare(
         'SELECT id, fecha, hora_inicio, servicio, estado,
                 cliente_nombre AS nombre,
+                cliente_apellido AS apellido,
                 cliente_telefono AS telefono,
-                cliente_email AS email
+                cliente_email AS email,
+                cliente_tipo_persona AS tipo_persona
          FROM citas
          WHERE estado IN (\'pendiente\', \'reservada\') AND fecha BETWEEN ? AND ?'
     );
@@ -175,9 +177,10 @@ function bloquesDelDia(DateTimeImmutable $fecha, array $periodo): array
             'etiqueta' => etiquetaBloque($hora),
             'estado' => $estado,
             'cita_id' => $cita ? (int) $cita['id'] : null,
-            'cliente' => $cita['nombre'] ?? null,
+            'cliente' => $cita ? nombreCliente((string) $cita['nombre'], (string) $cita['apellido']) : null,
             'telefono' => $cita['telefono'] ?? null,
             'email' => $cita['email'] ?? null,
+            'tipo_persona' => $cita['tipo_persona'] ?? null,
             'servicio' => $cita['servicio'] ?? null,
         ];
     }
@@ -213,12 +216,88 @@ function etiquetaServicio(?string $clave): string
     return servicios()[$clave] ?? $anteriores[$clave] ?? 'Asesoría';
 }
 
+function tiposPersona(): array
+{
+    return [
+        'persona_natural' => 'Persona Natural',
+        'empresa' => 'Empresa',
+        'empresa_por_constituir' => 'Empresa por Constituir',
+    ];
+}
+
+function tipoPersonaValido(?string $clave): ?string
+{
+    $clave = (string) $clave;
+
+    return array_key_exists($clave, tiposPersona()) ? $clave : null;
+}
+
+function etiquetaTipoPersona(?string $clave): string
+{
+    return tiposPersona()[$clave] ?? 'No informado';
+}
+
+function nombreCliente(string $nombre, ?string $apellido = null): string
+{
+    return trim($nombre . ' ' . trim((string) $apellido));
+}
+
+function informacionServicio(string $clave): array
+{
+    $catalogo = [
+        'constitucion_empresas' => [
+            'descripcion' => 'Orientación para constituir una empresa y ordenar la información del inicio.',
+            'beneficios' => [
+                'Conversación sobre el inicio de una empresa',
+                'Apoyo para ordenar la información inicial',
+                'Espacio para dudas de formalización',
+            ],
+        ],
+        'contabilidad' => [
+            'descripcion' => 'Acompañamiento para el orden de tus registros y la preparación de tu información financiera.',
+            'beneficios' => [
+                'Revisión del orden de tus registros',
+                'Apoyo en la preparación de tu información financiera',
+                'Espacio para dudas de tu contabilidad',
+            ],
+        ],
+        'asesoria_laboral' => [
+            'descripcion' => 'Orientación sobre las obligaciones laborales de tu actividad ante la Dirección del Trabajo.',
+            'beneficios' => [
+                'Conversación sobre tus obligaciones laborales',
+                'Apoyo para ordenar la información de tu personal',
+                'Espacio para dudas laborales generales',
+            ],
+        ],
+        'operacion_renta' => [
+            'descripcion' => 'Acompañamiento para revisar tu operación renta y ordenar la información del período.',
+            'beneficios' => [
+                'Revisión general de tu operación renta',
+                'Apoyo para ordenar la información del período',
+                'Espacio para dudas tributarias del período',
+            ],
+        ],
+    ];
+
+    $info = $catalogo[$clave] ?? null;
+    if (!is_array($info)) {
+        return ['descripcion' => '', 'beneficios' => []];
+    }
+
+    return [
+        'descripcion' => (string) ($info['descripcion'] ?? ''),
+        'beneficios' => array_values(array_map('strval', $info['beneficios'] ?? [])),
+    ];
+}
+
 function validarClienteReserva(array $entrada): array
 {
     $datos = [
         'nombre' => trim((string) ($entrada['nombre'] ?? '')),
+        'apellido' => trim((string) ($entrada['apellido'] ?? '')),
         'email' => normalizarEmail((string) ($entrada['email'] ?? '')),
         'telefono' => trim((string) ($entrada['telefono'] ?? '')),
+        'tipo_persona' => tipoPersonaValido((string) ($entrada['tipo_persona'] ?? '')),
     ];
     $errores = [];
     $largoNombre = function_exists('mb_strlen')
@@ -228,12 +307,24 @@ function validarClienteReserva(array $entrada): array
     if ($largoNombre < 2 || $largoNombre > 120 || preg_match('/^[\p{L}\s\'.-]+$/u', $datos['nombre']) !== 1) {
         $errores[] = 'Escribe tu nombre, entre 2 y 120 letras.';
     }
+    $largoApellido = function_exists('mb_strlen')
+        ? mb_strlen($datos['apellido'], 'UTF-8')
+        : strlen($datos['apellido']);
+    if (
+        $datos['apellido'] !== ''
+        && ($largoApellido > 120 || preg_match('/^[\p{L}\s\'.-]+$/u', $datos['apellido']) !== 1)
+    ) {
+        $errores[] = 'Escribe un apellido válido de hasta 120 letras.';
+    }
     if (filter_var($datos['email'], FILTER_VALIDATE_EMAIL) === false || strlen($datos['email']) > 190) {
         $errores[] = 'El correo no es válido.';
     }
     $digitos = preg_replace('/\D+/', '', $datos['telefono']) ?? '';
     if (strlen($datos['telefono']) > 40 || strlen($digitos) < 6 || strlen($digitos) > 20) {
         $errores[] = 'El teléfono tiene que tener entre 6 y 20 números.';
+    }
+    if ($datos['tipo_persona'] === null) {
+        $errores[] = 'Elige un tipo de persona o régimen.';
     }
 
     return ['datos' => $datos, 'errores' => $errores];
@@ -287,13 +378,16 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
         $token = bin2hex(random_bytes(32));
         $alta = $pdo->prepare(
             'INSERT INTO citas
-                (usuario_id, cliente_nombre, cliente_email, cliente_telefono, fecha, hora_inicio, servicio, estado, token_hash)
-             VALUES (NULL, ?, ?, ?, ?, ?, ?, \'pendiente\', ?)'
+                (usuario_id, cliente_nombre, cliente_apellido, cliente_email, cliente_telefono,
+                 cliente_tipo_persona, fecha, hora_inicio, servicio, estado, token_hash)
+             VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, \'pendiente\', ?)'
         );
         $alta->execute([
             $cliente['nombre'],
+            $cliente['apellido'],
             $cliente['email'],
             $cliente['telefono'],
+            $cliente['tipo_persona'],
             $fecha,
             $hora,
             $servicio,
@@ -316,8 +410,10 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
         'cita' => [
             'id' => $citaId,
             'cliente_nombre' => $cliente['nombre'],
+            'cliente_apellido' => $cliente['apellido'],
             'cliente_email' => $cliente['email'],
             'cliente_telefono' => $cliente['telefono'],
+            'cliente_tipo_persona' => $cliente['tipo_persona'],
             'fecha' => $fecha,
             'hora_inicio' => $hora,
             'servicio' => $servicio,
@@ -330,8 +426,9 @@ function reservarBloque(array $cliente, string $fecha, string $hora, string $ser
 function citaPorId(int $citaId): ?array
 {
     $consulta = base()->prepare(
-        'SELECT id, usuario_id, cliente_nombre, cliente_email, cliente_telefono,
-                fecha, hora_inicio, servicio, estado, token_hash
+        'SELECT id, usuario_id, cliente_nombre, cliente_apellido, cliente_email,
+                cliente_telefono, cliente_tipo_persona, fecha, hora_inicio, hora_fin,
+                servicio, estado, token_hash, kora_bloque_id, kora_reserva_id
          FROM citas WHERE id = ?'
     );
     $consulta->execute([$citaId]);

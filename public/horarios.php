@@ -14,19 +14,28 @@ if ($pedido !== null) {
 }
 
 $servicio = servicioValido((string) ($_POST['servicio'] ?? $_SESSION['servicio'] ?? ''));
-$solicitada = fechaEnAgenda((string) ($_GET['fecha'] ?? $_POST['fecha'] ?? ''));
-$fecha = $solicitada ?? fechasDeAgenda()[0];
-$fechaIso = $fecha->format('Y-m-d');
+$agenda = $servicio === null ? ['error' => null, 'bloques' => [], 'fechas' => []] : koraConsultarBloques();
+if ($agenda['bloques'] !== []) {
+    $agenda['bloques'] = koraBloquesPublicos($agenda['bloques']);
+}
+$solicitada = koraFecha((string) ($_GET['fecha'] ?? $_POST['fecha'] ?? ''), $agenda['fechas']);
+$fecha = $solicitada ?? ($agenda['fechas'][0] ?? null);
+$fechaIso = $fecha ? $fecha->format('Y-m-d') : '';
 $errores = [];
 $datos = [
     'nombre' => trim((string) ($_POST['nombre'] ?? '')),
+    'apellido' => trim((string) ($_POST['apellido'] ?? '')),
     'email' => normalizarEmail((string) ($_POST['email'] ?? '')),
     'telefono' => trim((string) ($_POST['telefono'] ?? '')),
+    'tipo_persona' => tipoPersonaValido((string) ($_POST['tipo_persona'] ?? '')),
 ];
 
-$volver = 'horarios.php?fecha=' . urlencode($fechaIso);
+$volver = 'horarios.php';
+if ($fechaIso !== '') {
+    $volver .= '?fecha=' . urlencode($fechaIso);
+}
 if ($servicio !== null) {
-    $volver .= '&servicio=' . urlencode($servicio);
+    $volver .= ($fechaIso === '' ? '?' : '&') . 'servicio=' . urlencode($servicio);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -40,25 +49,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores = $validacion['errores'];
 
         if ($errores === []) {
-            $resultado = reservarBloque(
+            $resultado = koraSolicitar(
                 $datos,
-                (string) ($_POST['fecha'] ?? ''),
-                (string) ($_POST['hora'] ?? ''),
+                (string) ($_POST['bloque'] ?? ''),
                 $servicio
             );
             if ($resultado['error'] !== null) {
                 $errores[] = $resultado['error'];
             } else {
                 $cita = $resultado['cita'];
-                $correoEnviado = notificarReserva($cita);
-                $mensaje = 'Tu solicitud de ' . etiquetaServicio($servicio) . ' quedó en espera para el '
-                    . fechaLarga($fecha) . ', ' . etiquetaBloque((string) $cita['hora_inicio'])
-                    . '. Te avisaremos cuando sea confirmada.';
-                if (!$correoEnviado) {
-                    $mensaje .= ' No pudimos enviar el aviso por correo.';
+                $correoAdministrador = notificarSolicitudAdministrador($cita);
+                if (!$correoAdministrador) {
+                    $liberada = koraAnularReserva((string) ($cita['kora_id'] ?? ''));
+                    if ($liberada) {
+                        resolverSolicitud((int) $cita['id'], 'cancelada', (string) $cita['token']);
+                    }
+                    aviso(
+                        'error',
+                        $liberada
+                            ? 'No pudimos enviar la solicitud para aprobación. El horario sigue disponible; intenta de nuevo.'
+                            : 'No pudimos enviar la solicitud para aprobación. El horario quedó retenido; intenta de nuevo más tarde.'
+                    );
+                    redirigir('horarios.php?fecha=' . urlencode((string) $cita['fecha']) . '&servicio=' . urlencode($servicio));
                 }
-                aviso($correoEnviado ? 'ok' : 'error', $mensaje);
-                redirigir($volver);
+                $correoCliente = notificarSolicitudCliente($cita);
+                $dia = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $cita['fecha'], zonaHoraria());
+                $mensaje = 'Recibimos tu solicitud de ' . etiquetaServicio($servicio) . ' para el '
+                    . fechaLarga($dia ?: $fecha) . ', ' . $cita['etiqueta']
+                    . '. Está pendiente de confirmación.';
+                if (!$correoCliente) {
+                    $mensaje .= ' No pudimos enviarte el aviso por correo.';
+                }
+                aviso($correoCliente ? 'ok' : 'error', $mensaje);
+                redirigir('horarios.php?fecha=' . urlencode((string) $cita['fecha']) . '&servicio=' . urlencode($servicio));
             }
         }
     }
@@ -69,7 +92,7 @@ abrirPagina('Horarios');
 <section>
   <?php if ($servicio === null): ?>
     <h1>Elige el trámite</h1>
-    <p>El horario que reserves queda ocupado. No se puede usar de nuevo para otro trámite.</p>
+    <p>El horario solicitado queda en espera hasta que confirmemos la asesoría.</p>
     <div class="tramites">
       <?php foreach (servicios() as $clave => $nombre): ?>
         <a class="tramite" href="horarios.php?servicio=<?= e($clave) ?>"><?= e($nombre) ?></a>
@@ -77,27 +100,52 @@ abrirPagina('Horarios');
     </div>
   <?php else: ?>
     <?php
-      $periodo = cargarPeriodo();
-      $bloques = bloquesDelDia($fecha, $periodo);
+      $bloques = $fecha ? koraBloquesDelDia($fecha, $agenda['bloques']) : [];
       $libres = array_values(array_filter(
           $bloques,
           static fn (array $bloque): bool => $bloque['estado'] === 'libre'
       ));
     ?>
     <h1><?= e(etiquetaServicio($servicio)) ?></h1>
-    <p><?= e(textoHorario()) ?> Puedes reservar hasta un mes de anticipación. La hora queda en espera hasta que la confirmemos y no se ofrece a otra persona.</p>
+    <?php
+      $infoServicio = informacionServicio($servicio);
+      $iconosServicio = [
+          'constitucion_empresas' => 'cuenta',
+          'contabilidad' => 'financiera',
+          'asesoria_laboral' => 'remuneraciones',
+          'operacion_renta' => 'tributaria',
+      ];
+    ?>
+    <div class="reserva-intro">
+      <div class="reserva-detalle">
+        <?= icono($iconosServicio[$servicio] ?? 'horarios') ?>
+        <p><?= e($infoServicio['descripcion']) ?></p>
+      </div>
+      <?php if ($infoServicio['beneficios'] !== []): ?>
+        <ul class="reserva-beneficios">
+          <?php foreach ($infoServicio['beneficios'] as $beneficio): ?>
+            <li><?= e($beneficio) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </div>
+    <p><?= e(textoHorario()) ?> Enviaremos tu solicitud para revisión y te avisaremos por correo cuando sea confirmada.</p>
+    <?php if ($agenda['error'] !== null): ?>
+      <p class="nota"><?= e($agenda['error']) ?></p>
+    <?php endif; ?>
     <?php erroresDe($errores); ?>
+    <div class="reserva-layout">
     <div class="tramites">
       <?php foreach (servicios() as $clave => $nombre): ?>
         <a class="tramite<?= $clave === $servicio ? ' activo' : '' ?>" href="horarios.php?fecha=<?= e($fechaIso) ?>&amp;servicio=<?= e($clave) ?>"><?= e($nombre) ?></a>
       <?php endforeach; ?>
     </div>
     <div class="dias">
-      <?php foreach (fechasDeAgenda() as $dia): ?>
+      <?php foreach ($agenda['fechas'] as $dia): ?>
         <?php
           $iso = $dia->format('Y-m-d');
           $cantidad = 0;
-          foreach (bloquesDelDia($dia, $periodo) as $bloque) {
+          foreach (koraBloquesDelDia($dia, $agenda['bloques']) as $bloque) {
               if ($bloque['estado'] === 'libre') {
                   $cantidad++;
               }
@@ -113,8 +161,10 @@ abrirPagina('Horarios');
       <?php endforeach; ?>
     </div>
 
+    <?php if ($fecha): ?>
     <h2><?= e(fechaLarga($fecha)) ?></h2>
-    <?php if ($libres === []): ?>
+    <?php endif; ?>
+    <?php if ($agenda['error'] === null && ($fecha === null || $libres === [])): ?>
       <p class="nota">No hay horarios libres este día.</p>
     <?php else: ?>
       <form class="formulario reserva-publica" method="post" action="horarios.php" data-reserva data-dia="<?= e(fechaLarga($fecha)) ?>" data-servicio="<?= e(etiquetaServicio($servicio)) ?>">
@@ -124,10 +174,14 @@ abrirPagina('Horarios');
         <div class="datos-reserva">
           <label>
             Nombre
-            <input type="text" name="nombre" required maxlength="120" autocomplete="name" value="<?= e($datos['nombre']) ?>">
+            <input type="text" name="nombre" required maxlength="120" autocomplete="given-name" value="<?= e($datos['nombre']) ?>">
           </label>
           <label>
-            Correo
+            Apellido <span class="opcional">(opcional)</span>
+            <input type="text" name="apellido" maxlength="120" autocomplete="family-name" value="<?= e($datos['apellido']) ?>">
+          </label>
+          <label>
+            Correo electrónico
             <input type="email" name="email" required maxlength="190" autocomplete="email" value="<?= e($datos['email']) ?>">
           </label>
           <label>
@@ -135,12 +189,23 @@ abrirPagina('Horarios');
             <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" value="<?= e($datos['telefono']) ?>">
           </label>
         </div>
+        <fieldset class="tipo-persona">
+          <legend>Tipo de Persona / Régimen</legend>
+          <div class="opciones-tipo-persona">
+            <?php foreach (tiposPersona() as $clave => $etiqueta): ?>
+              <label>
+                <input type="radio" name="tipo_persona" value="<?= e($clave) ?>" required<?= $datos['tipo_persona'] === $clave ? ' checked' : '' ?>>
+                <span><?= e($etiqueta) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </fieldset>
         <fieldset>
           <legend>Elige una hora</legend>
           <div class="grilla">
             <?php foreach ($libres as $bloque): ?>
               <label class="bloque">
-                <input type="radio" name="hora" value="<?= e($bloque['hora']) ?>" required>
+                <input type="radio" name="bloque" value="<?= e($bloque['id']) ?>" required>
                 <span><?= e($bloque['etiqueta']) ?></span>
               </label>
             <?php endforeach; ?>
@@ -148,10 +213,11 @@ abrirPagina('Horarios');
         </fieldset>
         <div class="acciones acciones-reserva">
           <a class="boton secundario" href="horarios.php?elegir=1">Volver</a>
-          <button class="boton" type="submit">Reservar</button>
+          <button class="boton" type="submit">Solicitar horario</button>
         </div>
       </form>
     <?php endif; ?>
+    </div>
   <?php endif; ?>
 </section>
 <?php

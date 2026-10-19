@@ -20,10 +20,17 @@ CREATE TABLE IF NOT EXISTS citas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   usuario_id INT UNSIGNED NULL,
   cliente_nombre VARCHAR(120) NOT NULL,
+  cliente_apellido VARCHAR(120) NOT NULL DEFAULT '',
   cliente_email VARCHAR(190) NOT NULL,
   cliente_telefono VARCHAR(40) NOT NULL,
+  cliente_tipo_persona ENUM(
+    'persona_natural',
+    'empresa',
+    'empresa_por_constituir'
+  ) NULL,
   fecha DATE NOT NULL,
   hora_inicio TIME NOT NULL,
+  hora_fin TIME NULL,
   servicio ENUM(
     'gestion_tributaria',
     'contabilidad_financiera',
@@ -35,10 +42,14 @@ CREATE TABLE IF NOT EXISTS citas (
   ) NULL,
   estado ENUM('pendiente', 'reservada', 'cancelada') NOT NULL DEFAULT 'reservada',
   token_hash CHAR(64) NULL,
+  kora_bloque_id CHAR(36) NULL,
+  kora_reserva_id CHAR(36) NULL,
   creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   activo TINYINT
     AS (IF(estado IN ('pendiente', 'reservada'), 1, NULL)) STORED,
   UNIQUE KEY uniq_cupo (fecha, hora_inicio, activo),
+  UNIQUE KEY uniq_kora_reserva (kora_reserva_id),
+  KEY idx_kora_bloque (kora_bloque_id),
   KEY idx_citas_usuario (usuario_id),
   KEY idx_citas_fecha (fecha, hora_inicio),
   CONSTRAINT fk_citas_usuario
@@ -57,4 +68,27 @@ CREATE TABLE IF NOT EXISTS articulos (
   titulo VARCHAR(160) NOT NULL,
   cuerpo TEXT NOT NULL,
   publicado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS conversaciones (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  token_hash CHAR(64) NOT NULL,
+  nombre VARCHAR(80) NOT NULL,
+  tema VARCHAR(40) NOT NULL,
+  creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_conversacion_token (token_hash),
+  KEY idx_conversaciones_actualizada (actualizada_en)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS mensajes (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  conversacion_id INT UNSIGNED NOT NULL,
+  autor ENUM('visita', 'anfitrion') NOT NULL,
+  texto VARCHAR(1000) NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  leido_en TIMESTAMP NULL DEFAULT NULL,
+  KEY idx_mensajes_conversacion (conversacion_id, id),
+  CONSTRAINT fk_mensajes_conversacion
+    FOREIGN KEY (conversacion_id) REFERENCES conversaciones (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

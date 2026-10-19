@@ -19,7 +19,7 @@ if ($id > 0 && $existente === null && $_SERVER['REQUEST_METHOD'] !== 'POST') {
     <section class="articulo">
       <h1>Artículo no encontrado</h1>
       <p>No encontramos ese artículo.</p>
-      <p><a class="boton" href="articulos.php">Volver a los artículos</a></p>
+      <p><a class="boton" href="articulos-admin.php">Volver al blog</a></p>
     </section>
     <?php
     cerrarPagina();
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             aviso('error', 'Ese artículo ya no existe.');
         }
-        redirigir('articulos.php');
+        redirigir('articulos-admin.php');
     } else {
         $titulo = (string) ($_POST['titulo'] ?? '');
         $cuerpo = (string) ($_POST['cuerpo'] ?? '');
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores = $resultado['errores'];
         if ($errores === [] && $resultado['id'] !== null) {
             aviso('ok', $id > 0 ? 'Guardaste los cambios.' : 'Publicaste el artículo.');
-            redirigir('articulo.php?id=' . $resultado['id']);
+            redirigir('articulos-admin.php');
         }
     }
 }
@@ -75,7 +75,7 @@ abrirPagina($id > 0 ? 'Editar artículo' : 'Nuevo artículo');
     </div>
     <div class="acciones-articulo">
       <button class="boton" type="submit">Guardar</button>
-      <a class="boton secundario" href="<?= $id > 0 ? 'articulo.php?id=' . e((string) $id) : 'articulos.php' ?>">Cancelar</a>
+      <a class="boton secundario" href="articulos-admin.php">Cancelar</a>
     </div>
   </form>
   <?php if ($id > 0): ?>

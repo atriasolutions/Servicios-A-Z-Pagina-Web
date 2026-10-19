@@ -15,18 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $confirmar = (string) $_POST['accion'] === 'confirmar';
-    $resuelto = resolverSolicitud($citaId, $confirmar ? 'reservada' : 'cancelada', $token);
-    if ($resuelto['error'] !== null) {
-        aviso('error', $resuelto['error']);
-        redirigir('confirmar.php?resultado=usada');
+    if ($confirmar) {
+        $resuelto = koraAprobarSolicitud($citaId, $token);
+        if ($resuelto['error'] !== null) {
+            aviso('error', $resuelto['error'] . ' La solicitud sigue pendiente; puedes volver a intentar.');
+            redirigir('confirmar.php?cita=' . $citaId . '&token=' . rawurlencode($token));
+        }
+        $correoEnviado = notificarConfirmacion($resuelto['cita']);
+        $mensaje = 'Confirmaste la asesoría.';
+    } else {
+        $resuelto = koraRechazarSolicitud($citaId, $token);
+        if ($resuelto['error'] !== null) {
+            aviso('error', $resuelto['error']);
+            redirigir('confirmar.php?cita=' . $citaId . '&token=' . rawurlencode($token));
+        }
+        $correoEnviado = notificarRechazo($resuelto['cita']);
+        $mensaje = 'Rechazaste la solicitud. El horario volvió a quedar libre.';
     }
-
-    $correoEnviado = $confirmar
-        ? notificarConfirmacion($resuelto['cita'])
-        : notificarRechazo($resuelto['cita']);
-    $mensaje = $confirmar
-        ? 'Confirmaste la asesoría.'
-        : 'Rechazaste la solicitud. El horario volvió a quedar libre.';
     if (!$correoEnviado) {
         $mensaje .= ' No pudimos enviar el aviso al cliente.';
     }
@@ -45,18 +50,26 @@ abrirPagina('Confirmar cita');
 ?>
 <section class="articulo">
   <?php if ($pendiente): ?>
-    <?php $resumen = resumenCita($cita); ?>
+    <?php
+      $resumen = resumenCita($cita);
+      $cliente = nombreCliente(
+          (string) $cita['cliente_nombre'],
+          (string) ($cita['cliente_apellido'] ?? '')
+      );
+    ?>
     <h1>Solicitud en espera</h1>
-    <p><?= e((string) $cita['cliente_nombre']) ?> pidió <?= e($resumen['servicio']) ?> para el <?= e($resumen['fecha']) ?>, <?= e($resumen['hora']) ?>.</p>
+    <p><?= e($cliente) ?> pidió <?= e($resumen['servicio']) ?> para el <?= e($resumen['fecha']) ?>, <?= e($resumen['hora']) ?>.</p>
+    <p>Tipo de persona o régimen: <?= e(etiquetaTipoPersona($cita['cliente_tipo_persona'] ?? null)) ?>.</p>
+    <p>Correo: <?= e((string) $cita['cliente_email']) ?> · Teléfono: <?= e((string) $cita['cliente_telefono']) ?></p>
     <div class="acciones-articulo">
-      <form method="post" action="confirmar.php" data-confirmar="<?= e('¿Confirmar la asesoría de ' . $cita['cliente_nombre'] . ' del ' . $resumen['fecha'] . ', ' . $resumen['hora'] . '?') ?>">
+      <form method="post" action="confirmar.php" data-confirmar="<?= e('¿Confirmar la asesoría de ' . $cliente . ' del ' . $resumen['fecha'] . ', ' . $resumen['hora'] . '?') ?>">
         <?= campoCsrf() ?>
         <input type="hidden" name="cita" value="<?= e((string) $citaId) ?>">
         <input type="hidden" name="token" value="<?= e($token) ?>">
         <input type="hidden" name="accion" value="confirmar">
         <button class="boton" type="submit">Confirmar</button>
       </form>
-      <form method="post" action="confirmar.php" data-confirmar="<?= e('¿Rechazar la solicitud de ' . $cita['cliente_nombre'] . ' del ' . $resumen['fecha'] . ', ' . $resumen['hora'] . '?') ?>">
+      <form method="post" action="confirmar.php" data-confirmar="<?= e('¿Rechazar la solicitud de ' . $cliente . ' del ' . $resumen['fecha'] . ', ' . $resumen['hora'] . '?') ?>">
         <?= campoCsrf() ?>
         <input type="hidden" name="cita" value="<?= e((string) $citaId) ?>">
         <input type="hidden" name="token" value="<?= e($token) ?>">
@@ -70,6 +83,9 @@ abrirPagina('Confirmar cita');
   <?php elseif ($resultado === 'rechazada'): ?>
     <h1>Solicitud rechazada</h1>
     <p>El horario volvió a quedar libre.</p>
+  <?php elseif ($resultado === 'agotada'): ?>
+    <h1>Horario no disponible</h1>
+    <p>La solicitud no pudo confirmarse porque el horario ya fue tomado en Kora.</p>
   <?php else: ?>
     <h1>Solicitud no disponible</h1>
     <p>Esta solicitud ya no está pendiente.</p>

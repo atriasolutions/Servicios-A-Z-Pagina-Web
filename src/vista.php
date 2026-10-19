@@ -58,12 +58,7 @@ function fechaCorta(DateTimeInterface $fecha): string
 
 function textoHorario(): string
 {
-    $agenda = configuracion()['agenda'];
-    $desde = sprintf('%02d:00', (int) $agenda['hora_inicio']);
-    $hasta = sprintf('%02d:00', (int) $agenda['hora_fin']);
-    $minutos = (int) $agenda['duracion_minutos'];
-
-    return 'Cada asesoría dura ' . $minutos . ' minutos, de lunes a viernes, de ' . $desde . ' a ' . $hasta . '.';
+    return 'Las asesorías se reservan en los horarios libres que publica la agenda.';
 }
 
 // Trazos dibujados para este sitio. No provienen de un set de terceros.
@@ -91,6 +86,7 @@ function icono(string $nombre): string
             . '<circle cx="14.1" cy="6.2" r="1.45"/>'
             . '<path d="M11.3 15.8c.25-2.05 1.3-3.2 2.8-3.2s2.55 1.15 2.8 3.2"/>',
         'whatsapp' => '<path d="M4.2 4.4h8.8a2.2 2.2 0 0 1 2.2 2.2v5.2a2.2 2.2 0 0 1-2.2 2.2H8.4L5.2 16.6v-2.6H4.2A2.2 2.2 0 0 1 2 11.8V6.6a2.2 2.2 0 0 1 2.2-2.2z"/>',
+        'chat' => '<path d="M4.2 4.4h8.8a2.2 2.2 0 0 1 2.2 2.2v5.2a2.2 2.2 0 0 1-2.2 2.2H8.4L5.2 16.6v-2.6H4.2A2.2 2.2 0 0 1 2 11.8V6.6a2.2 2.2 0 0 1 2.2-2.2z"/>',
         'direccion' => '<path d="M10 17.6s4.8-4.3 4.8-7.8a4.8 4.8 0 0 0-9.6 0c0 3.5 4.8 7.8 4.8 7.8z"/>'
             . '<circle cx="10" cy="9.7" r="1.6"/>',
         'correo' => '<rect x="2.4" y="4.6" width="15.2" height="10.8" rx="1.6"/>'
@@ -127,7 +123,18 @@ function abrirPagina(string $titulo, bool $portada = false): void
     echo '<title>' . e($titulo) . ' · ' . e($nombreSitio) . '</title>';
     echo '<link rel="icon" type="image/png" sizes="128x128" href="/img/favicon-az.png">';
     etiquetasVite();
-    echo $portada ? '</head><body class="portada">' : '</head><body>';
+    if ($portada) {
+        echo '<script>if(window.IntersectionObserver&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("con-revelado");}</script>';
+    }
+    if ($portada) {
+        echo '</head><body class="portada">';
+    } elseif ($actual === 'horarios.php') {
+        echo '</head><body class="fondo-reserva">';
+    } elseif (in_array($actual, ['articulos.php', 'articulo.php', 'login.php'], true)) {
+        echo '</head><body class="fondo-articulos">';
+    } else {
+        echo '</head><body>';
+    }
     echo '<div class="barra-superior" aria-hidden="true"></div>';
     echo '<header class="cabecera">';
     echo '<a class="marca" href="index.php" aria-label="' . e($nombreSitio) . '">';
@@ -141,10 +148,11 @@ function abrirPagina(string $titulo, bool $portada = false): void
     };
 
     $enlace('index.php', 'Inicio', 'inicio');
-    $enlace('articulos.php', 'Artículos', 'articulos', ['articulo.php', 'articulo-editar.php']);
     if ($usuario && $usuario['rol'] === 'anfitrion') {
+        $enlace('articulos-admin.php', 'Blog', 'articulos', ['articulo-editar.php']);
         $enlace('agenda.php', 'Agenda', 'agenda');
     } else {
+        $enlace('articulos.php', 'Artículos', 'articulos', ['articulo.php']);
         $enlace('horarios.php', 'Reservar', 'horarios');
         $enlace('login.php', 'Administración', 'entrar');
     }
@@ -169,9 +177,126 @@ function cerrarPagina(): void
 {
     $nombreSitio = (string) configuracion()['sitio']['nombre'];
 
+    $actual = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $paginasAdmin = ['agenda.php', 'chat.php', 'confirmar.php', 'articulos-admin.php', 'articulo-editar.php'];
+
     echo '</main>';
-    echo '<footer class="pie"><p>' . e($nombreSitio) . '</p></footer>';
+    if (in_array($actual, $paginasAdmin, true)) {
+        echo '<footer class="pie"><p>' . e($nombreSitio) . '</p></footer>';
+    } else {
+        echo piePublico($nombreSitio);
+    }
+    echo accesoWhatsApp();
     echo '</body></html>';
+}
+
+function redesSociales(): array
+{
+    $redes = configuracion()['sitio']['redes'] ?? [];
+    if (!is_array($redes)) {
+        return [];
+    }
+
+    $nombres = [
+        'facebook' => 'Facebook',
+        'instagram' => 'Instagram',
+        'linkedin' => 'LinkedIn',
+        'x' => 'X',
+        'twitter' => 'X',
+        'tiktok' => 'TikTok',
+        'youtube' => 'YouTube',
+    ];
+    $lista = [];
+    foreach ($redes as $clave => $valor) {
+        if (is_array($valor)) {
+            $url = trim((string) ($valor['url'] ?? ''));
+            $nombre = trim((string) ($valor['nombre'] ?? (is_string($clave) ? $clave : '')));
+        } else {
+            $url = trim((string) $valor);
+            $nombre = is_string($clave) ? $clave : '';
+        }
+
+        $esquema = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if ($url === '' || !in_array($esquema, ['http', 'https'], true) || parse_url($url, PHP_URL_HOST) === null) {
+            continue;
+        }
+
+        if ($nombre === '') {
+            $nombre = (string) parse_url($url, PHP_URL_HOST);
+        }
+        $lista[] = ['nombre' => $nombres[strtolower($nombre)] ?? ucfirst($nombre), 'url' => $url];
+    }
+
+    return $lista;
+}
+
+function piePublico(string $nombreSitio): string
+{
+    $html = '<footer class="pie pie-publico">';
+    $html .= '<div class="pie-inner">';
+
+    $html .= '<div class="pie-columna pie-marca">';
+    $html .= '<p class="pie-nombre">' . e($nombreSitio) . '</p>';
+    $html .= '<p>Asesoría contable, laboral y tributaria para pymes y emprendedores.</p>';
+    $redes = redesSociales();
+    if ($redes !== []) {
+        $html .= '<ul class="pie-redes" aria-label="Redes sociales">';
+        foreach ($redes as $red) {
+            $html .= '<li><a href="' . e($red['url']) . '" target="_blank" rel="noopener noreferrer">' . e($red['nombre']) . '</a></li>';
+        }
+        $html .= '</ul>';
+    }
+    $html .= '</div>';
+
+    $html .= '<nav class="pie-columna" aria-label="Pie de página">';
+    $html .= '<h2>Navegación</h2><ul>';
+    $html .= '<li><a href="index.php">Inicio</a></li>';
+    $html .= '<li><a href="index.php#servicios">Servicios</a></li>';
+    $html .= '<li><a href="index.php#nosotros">Nosotros</a></li>';
+    $html .= '<li><a href="articulos.php">Artículos</a></li>';
+    $html .= '<li><a href="horarios.php">Reservar una hora</a></li>';
+    $html .= '<li><a href="index.php#contacto">Contacto</a></li>';
+    $html .= '</ul></nav>';
+
+    $html .= '<div class="pie-columna">';
+    $html .= '<h2>Servicios</h2><ul>';
+    foreach (servicios() as $clave => $nombre) {
+        $html .= '<li><a href="horarios.php?servicio=' . e($clave) . '">' . e($nombre) . '</a></li>';
+    }
+    $html .= '</ul></div>';
+
+    $html .= '<div class="pie-columna pie-datos">';
+    $html .= '<h2>Contacto</h2><ul>';
+    $html .= '<li>' . icono('whatsapp') . '<a href="https://wa.me/56974531422">+569 74531422</a></li>';
+    $html .= '<li>' . icono('correo') . '<a href="mailto:servicioscontablesaz@gmail.com">servicioscontablesaz@gmail.com</a></li>';
+    $html .= '<li>' . icono('direccion') . '<span>La Serena</span></li>';
+    $html .= '</ul></div>';
+
+    $html .= '</div>';
+    $html .= '<p class="pie-legal">' . e($nombreSitio) . '</p>';
+    $html .= '</footer>';
+
+    return $html;
+}
+
+function marcaWhatsApp(): string
+{
+    return '<svg class="marca-whatsapp" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+        . '<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>'
+        . '</svg>';
+}
+
+function enlaceWhatsApp(): string
+{
+    return 'https://wa.me/56854650115?text=' . rawurlencode('Hola, quisiera hacer una consulta.');
+}
+
+function accesoWhatsApp(): string
+{
+    $destino = enlaceWhatsApp();
+
+    return '<a class="whatsapp-boton" href="' . e($destino) . '" target="_blank" rel="noopener noreferrer">'
+        . marcaWhatsApp() . '<span>WhatsApp</span></a>';
 }
 
 function erroresDe(array $errores): void

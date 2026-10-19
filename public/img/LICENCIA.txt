@@ -4,4 +4,27 @@ Autor: Tima Miroshnichenko
 Foto: https://www.pexels.com/photo/5717561/
 Licencia: https://www.pexels.com/license/
 
-Pexels permite usar la imagen en el sitio, también con fin comercial, sin pago. El crédito se deja aquí. La foto no es la oficina de Servicios Contables A&Z.
+Foto de fondo de artículos: fondo-articulos.jpg
+
+Autor: Mikhail Nilov
+Foto: https://www.pexels.com/photo/8297851/
+Licencia: https://www.pexels.com/license/
+
+Foto de fondo de reservas: fondo-reserva.jpg
+
+Autor: silverkblack
+Foto: https://www.pexels.com/photo/23496452/
+Licencia: https://www.pexels.com/license/
+
+Foto del espacio de trabajo: fondo-escritorio.jpg
+
+Es el mismo archivo que fondo.jpg (contenido idéntico). Mismo autor y licencia:
+Autor: Tima Miroshnichenko
+Foto: https://www.pexels.com/photo/5717561/
+Licencia: https://www.pexels.com/license/
+
+Uso en la portada: las diapositivas del carrusel principal reutilizan fondo-reserva.jpg, fondo-articulos.jpg y fondo-escritorio.jpg, con los créditos indicados arriba.
+
+Pendiente: fondo-faro.jpg y fondo-ciudad.jpg todavía no tienen autoría ni licencia registradas en este archivo. Hay que completarlas con la fuente original antes de publicar.
+
+Pexels permite usar las imágenes en el sitio, también con fin comercial, sin pago. El crédito se deja aquí. La foto no es la oficina de Servicios Contables A&Z.
