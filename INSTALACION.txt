@@ -8,7 +8,7 @@ No subas la carpeta datos-mysql. Esa base solo existe en tu computadora.
 Tampoco subas config/config.php de tu computadora: tiene la clave local.
 No subas node_modules ni vendor. En el servidor no hace falta Node ni Composer.
 En la computadora, antes de subir, entra a la carpeta agenda y ejecuta npm run build.
-Sube también public/build, que es el CSS y el JavaScript compilados.
+Sube también public/estaticos, que es el CSS y el JavaScript compilados.
 En el servidor se crea otro config.php a partir de config.example.php.
 
 1. En cPanel abre «Seleccionar versión de PHP» o «MultiPHP Manager»
@@ -66,7 +66,7 @@ En el servidor se crea otro config.php a partir de config.example.php.
 
 Cuenta de Servicios Contables A&Z
 --------------------
-Correo: mmb21894@gmail.com
+Correo: contabilidad@scontablesayz.cl
 La contraseña está cifrada en sql/anfitrion.sql.
 
 Los clientes reservan sin crear una cuenta; este ingreso es solo para

@@ -38,7 +38,7 @@ function etiquetasVite(): void
 
 function manifiestoVite(string $raiz): ?array
 {
-    foreach (['/public/build/.vite/manifest.json', '/public/build/manifest.json'] as $relativo) {
+    foreach (['/public/estaticos/manifest.json', '/public/estaticos/.vite/manifest.json'] as $relativo) {
         $ruta = $raiz . $relativo;
         if (!is_file($ruta)) {
             continue;
@@ -55,5 +55,5 @@ function manifiestoVite(string $raiz): ?array
 
 function rutaBuild(string $archivo): string
 {
-    return '/build/' . ltrim($archivo, '/');
+    return '/estaticos/' . ltrim($archivo, '/');
 }

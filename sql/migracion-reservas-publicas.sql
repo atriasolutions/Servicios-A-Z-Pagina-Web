@@ -21,13 +21,13 @@ ALTER TABLE citas
   MODIFY cliente_telefono VARCHAR(40) NOT NULL;
 
 UPDATE usuarios
-SET email = 'mmb21894@gmail.com'
+SET email = 'contabilidad@scontablesayz.cl'
 WHERE email = 'anfitrion@example.com'
   AND rol = 'anfitrion'
   AND NOT EXISTS (
     SELECT 1
     FROM (SELECT email FROM usuarios) AS existentes
-    WHERE existentes.email = 'mmb21894@gmail.com'
+    WHERE existentes.email = 'contabilidad@scontablesayz.cl'
   );
 
 UPDATE usuarios
@@ -35,7 +35,7 @@ SET
   nombre = 'Servicios Contables A&Z',
   password_hash = '$2y$10$/mcUTXXEd2R4roWJB2dy4.80syAlPj7/Oev0RvFvdmg77BoOrYdmi',
   rol = 'anfitrion'
-WHERE email = 'mmb21894@gmail.com';
+WHERE email = 'contabilidad@scontablesayz.cl';
 
 UPDATE usuarios
 SET rol = 'cliente'

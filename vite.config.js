@@ -51,8 +51,8 @@ export default defineConfig({
     },
   },
   build: {
-    manifest: true,
-    outDir: 'public/build',
+    manifest: 'manifest.json',
+    outDir: 'public/estaticos',
     emptyOutDir: true,
     rollupOptions: {
       input: 'recursos/app.js',
