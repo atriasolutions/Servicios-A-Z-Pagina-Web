@@ -28,12 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+erroresDe($errores);
 abrirPagina('Acceso administrativo');
 ?>
 <section>
   <h1>Acceso administrativo</h1>
   <p>Este ingreso es exclusivo para gestionar horarios y reservas.</p>
-  <?php erroresDe($errores); ?>
   <form class="formulario" method="post" action="login.php">
     <?= campoCsrf() ?>
     <label>

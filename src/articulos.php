@@ -2,10 +2,50 @@
 
 declare(strict_types=1);
 
-function listarArticulos(): array
+const ARTICULOS_POR_PAGINA = 10;
+const ARTICULOS_RECORTE = 800;
+const IMAGEN_ARTICULO_MAX_BYTES = 5242880;
+const IMAGEN_ARTICULO_MAX_LADO = 3000;
+const IMAGEN_ARTICULO_MAX_PIXELS = 12000000;
+
+function listarArticulosPublicados(int $pagina): array
+{
+    $porPagina = ARTICULOS_POR_PAGINA;
+    $total = (int) base()->query(
+        "SELECT COUNT(*) FROM articulos WHERE estado = 'publicado'"
+    )->fetchColumn();
+    $paginas = max(1, (int) ceil($total / $porPagina));
+    if ($pagina < 1) {
+        $pagina = 1;
+    }
+    if ($pagina > $paginas) {
+        $pagina = $paginas;
+    }
+
+    $desde = ($pagina - 1) * $porPagina;
+    $consulta = base()->prepare(
+        'SELECT id, titulo, publicado_en,
+            SUBSTRING(cuerpo, 1, ' . (int) ARTICULOS_RECORTE . ') AS recorte,
+            REGEXP_SUBSTR(cuerpo, ?) AS linea_imagen
+         FROM articulos
+         WHERE estado = \'publicado\'
+         ORDER BY publicado_en DESC, id DESC
+         LIMIT ' . (int) $porPagina . ' OFFSET ' . (int) $desde
+    );
+    $consulta->execute([patronLineaImagenArticulo()]);
+
+    return [
+        'articulos' => $consulta->fetchAll(),
+        'total' => $total,
+        'pagina' => $pagina,
+        'paginas' => $paginas,
+    ];
+}
+
+function listarArticulosAdmin(): array
 {
     $consulta = base()->query(
-        'SELECT id, titulo, cuerpo, publicado_en
+        'SELECT id, titulo, estado, publicado_en, SUBSTRING(cuerpo, 1, ' . (int) ARTICULOS_RECORTE . ') AS recorte
          FROM articulos
          ORDER BY publicado_en DESC, id DESC'
     );
@@ -13,22 +53,25 @@ function listarArticulos(): array
     return $consulta->fetchAll();
 }
 
-function obtenerArticulo(int $id): ?array
+function obtenerArticulo(int $id, bool $soloPublicado = false): ?array
 {
     if ($id < 1) {
         return null;
     }
 
-    $consulta = base()->prepare(
-        'SELECT id, titulo, cuerpo, publicado_en FROM articulos WHERE id = ?'
-    );
+    $sql = 'SELECT id, titulo, cuerpo, estado, publicado_en FROM articulos WHERE id = ?';
+    if ($soloPublicado) {
+        $sql .= " AND estado = 'publicado'";
+    }
+
+    $consulta = base()->prepare($sql);
     $consulta->execute([$id]);
     $articulo = $consulta->fetch();
 
     return $articulo ?: null;
 }
 
-function guardarArticulo(?int $id, string $titulo, string $cuerpo): array
+function guardarArticulo(?int $id, string $titulo, string $cuerpo, string $estado): array
 {
     $titulo = trim($titulo);
     $cuerpo = trim(str_replace(["\r\n", "\r"], "\n", $cuerpo));
@@ -46,13 +89,19 @@ function guardarArticulo(?int $id, string $titulo, string $cuerpo): array
         $errores[] = 'El texto puede tener hasta 20.000 caracteres.';
     }
 
+    if ($estado !== 'borrador' && $estado !== 'publicado') {
+        $errores[] = 'Elige si el artículo queda en borrador o publicado.';
+    }
+
     if ($errores !== []) {
         return ['errores' => $errores, 'id' => $id];
     }
 
     if ($id === null) {
-        $consulta = base()->prepare('INSERT INTO articulos (titulo, cuerpo) VALUES (?, ?)');
-        $consulta->execute([$titulo, $cuerpo]);
+        $consulta = base()->prepare(
+            'INSERT INTO articulos (titulo, cuerpo, estado) VALUES (?, ?, ?)'
+        );
+        $consulta->execute([$titulo, $cuerpo, $estado]);
 
         return ['errores' => [], 'id' => (int) base()->lastInsertId()];
     }
@@ -61,8 +110,10 @@ function guardarArticulo(?int $id, string $titulo, string $cuerpo): array
         return ['errores' => ['Ese artículo ya no existe.'], 'id' => null];
     }
 
-    $consulta = base()->prepare('UPDATE articulos SET titulo = ?, cuerpo = ? WHERE id = ?');
-    $consulta->execute([$titulo, $cuerpo, $id]);
+    $consulta = base()->prepare(
+        'UPDATE articulos SET titulo = ?, cuerpo = ?, estado = ? WHERE id = ?'
+    );
+    $consulta->execute([$titulo, $cuerpo, $estado, $id]);
 
     return ['errores' => [], 'id' => $id];
 }
@@ -77,6 +128,151 @@ function eliminarArticulo(int $id): bool
     $consulta->execute([$id]);
 
     return $consulta->rowCount() > 0;
+}
+
+function directorioImagenesArticulo(): string
+{
+    return dirname(__DIR__) . '/public/img/articulos';
+}
+
+function guardarImagenArticulo(?array $archivo): array
+{
+    if ($archivo === null || !isset($archivo['error']) || is_array($archivo['error'])) {
+        return ['ok' => false, 'error' => 'Elige una imagen JPEG, PNG o WebP.'];
+    }
+
+    $codigo = (int) $archivo['error'];
+    if ($codigo === UPLOAD_ERR_INI_SIZE || $codigo === UPLOAD_ERR_FORM_SIZE) {
+        return ['ok' => false, 'error' => 'La imagen puede pesar hasta 5 MB.'];
+    }
+    if ($codigo === UPLOAD_ERR_NO_FILE) {
+        return ['ok' => false, 'error' => 'Elige una imagen JPEG, PNG o WebP.'];
+    }
+    if ($codigo !== UPLOAD_ERR_OK) {
+        return ['ok' => false, 'error' => 'No se pudo subir la imagen.'];
+    }
+
+    $temporal = (string) ($archivo['tmp_name'] ?? '');
+    if ($temporal === '' || !is_uploaded_file($temporal)) {
+        return ['ok' => false, 'error' => 'No se pudo subir la imagen.'];
+    }
+
+    $revisada = revisarImagenArticulo($temporal);
+    if (!$revisada['ok']) {
+        return $revisada;
+    }
+
+    $directorio = directorioImagenesArticulo();
+    if (!is_dir($directorio) && !mkdir($directorio, 0755, true) && !is_dir($directorio)) {
+        return ['ok' => false, 'error' => 'No se pudo guardar la imagen.'];
+    }
+
+    $destino = '';
+    $nombre = '';
+    for ($intento = 0; $intento < 5; $intento++) {
+        $candidato = bin2hex(random_bytes(16)) . '.' . $revisada['extension'];
+        $ruta = $directorio . DIRECTORY_SEPARATOR . $candidato;
+        if (!is_file($ruta)) {
+            $destino = $ruta;
+            $nombre = $candidato;
+            break;
+        }
+    }
+
+    if ($destino === '' || $nombre === '') {
+        return ['ok' => false, 'error' => 'No se pudo guardar la imagen.'];
+    }
+
+    if (!move_uploaded_file($temporal, $destino)) {
+        return ['ok' => false, 'error' => 'No se pudo guardar la imagen.'];
+    }
+
+    $confirmada = revisarImagenArticulo($destino);
+    if (!$confirmada['ok']) {
+        unlink($destino);
+
+        return ['ok' => false, 'error' => 'No se pudo guardar la imagen.'];
+    }
+
+    $url = '/img/articulos/' . $nombre;
+    if (lineaImagenArticulo('![Imagen](' . $url . ')') === null) {
+        unlink($destino);
+
+        return ['ok' => false, 'error' => 'No se pudo guardar la imagen.'];
+    }
+
+    return ['ok' => true, 'url' => $url];
+}
+
+function revisarImagenArticulo(string $ruta): array
+{
+    if (!is_file($ruta)) {
+        return ['ok' => false, 'error' => 'No se pudo revisar la imagen.'];
+    }
+
+    $tamano = filesize($ruta);
+    if ($tamano === false || $tamano < 1) {
+        return ['ok' => false, 'error' => 'Elige una imagen JPEG, PNG o WebP.'];
+    }
+    if ($tamano > IMAGEN_ARTICULO_MAX_BYTES) {
+        return ['ok' => false, 'error' => 'La imagen puede pesar hasta 5 MB.'];
+    }
+
+    $muestra = file_get_contents($ruta, false, null, 0, 512);
+    if (!is_string($muestra) || preg_match('/<svg[\s>]/i', $muestra)) {
+        return ['ok' => false, 'error' => 'No se aceptan archivos SVG.'];
+    }
+
+    if (!class_exists(finfo::class)) {
+        return ['ok' => false, 'error' => 'No se pudo revisar la imagen.'];
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($ruta);
+    if (!is_string($mime)) {
+        return ['ok' => false, 'error' => 'Usa una imagen JPEG, PNG o WebP.'];
+    }
+    if (str_contains(strtolower($mime), 'svg')) {
+        return ['ok' => false, 'error' => 'No se aceptan archivos SVG.'];
+    }
+
+    $permitidos = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+    if (!isset($permitidos[$mime])) {
+        return ['ok' => false, 'error' => 'Usa una imagen JPEG, PNG o WebP.'];
+    }
+
+    $info = @getimagesize($ruta);
+    if ($info === false) {
+        return ['ok' => false, 'error' => 'Usa una imagen JPEG, PNG o WebP.'];
+    }
+
+    $tipos = [
+        IMAGETYPE_JPEG => 'image/jpeg',
+        IMAGETYPE_PNG => 'image/png',
+    ];
+    if (defined('IMAGETYPE_WEBP')) {
+        $tipos[IMAGETYPE_WEBP] = 'image/webp';
+    }
+
+    $tipo = (int) ($info[2] ?? 0);
+    $mimeImagen = (string) ($info['mime'] ?? '');
+    if (!isset($tipos[$tipo]) || $tipos[$tipo] !== $mime || $mimeImagen !== $mime) {
+        return ['ok' => false, 'error' => 'Usa una imagen JPEG, PNG o WebP.'];
+    }
+
+    $ancho = (int) ($info[0] ?? 0);
+    $alto = (int) ($info[1] ?? 0);
+    if ($ancho < 1 || $alto < 1 || $ancho > IMAGEN_ARTICULO_MAX_LADO || $alto > IMAGEN_ARTICULO_MAX_LADO) {
+        return ['ok' => false, 'error' => 'La imagen puede medir hasta 3000 × 3000 píxeles.'];
+    }
+    if (($ancho * $alto) > IMAGEN_ARTICULO_MAX_PIXELS) {
+        return ['ok' => false, 'error' => 'La imagen puede tener hasta 12 megapíxeles.'];
+    }
+
+    return ['ok' => true, 'extension' => $permitidos[$mime]];
 }
 
 function parrafosDe(string $cuerpo): array
@@ -112,14 +308,94 @@ function htmlParrafos(string $cuerpo): string
             continue;
         }
 
-        $lineas = array_map(
-            static fn (string $linea): string => marcasDeArticulo($linea),
-            explode("\n", $parrafo)
-        );
-        $html .= '<p>' . implode('<br>', $lineas) . '</p>';
+        $html .= htmlBloqueArticulo($parrafo);
     }
 
     return $html;
+}
+
+function htmlBloqueArticulo(string $parrafo): string
+{
+    $html = '';
+    $lineasTexto = [];
+    $volcar = static function () use (&$html, &$lineasTexto): void {
+        if ($lineasTexto === []) {
+            return;
+        }
+        $html .= '<p>' . implode('<br>', $lineasTexto) . '</p>';
+        $lineasTexto = [];
+    };
+
+    foreach (explode("\n", $parrafo) as $linea) {
+        $imagen = lineaImagenArticulo(trim($linea));
+        if ($imagen !== null) {
+            $volcar();
+            $html .= htmlFiguraArticulo($imagen['alt'], $imagen['url']);
+            continue;
+        }
+        $lineasTexto[] = marcasDeArticulo($linea);
+    }
+    $volcar();
+
+    return $html;
+}
+
+function htmlFiguraArticulo(string $alt, string $url): string
+{
+    return '<figure><img src="' . e($url) . '" alt="' . e($alt) . '" loading="lazy" decoding="async"></figure>';
+}
+
+function patronLineaImagenArticulo(): string
+{
+    return '(?m)^[ \t]*!\\[[^\\]\\r\\n]{1,200}\\]\\(/img/articulos/[a-f0-9]{32}\\.(?:jpg|png|webp)\\)[ \t]*\\r?$';
+}
+
+function primeraImagenArticulo(string $fragmento): ?array
+{
+    if ($fragmento === '') {
+        return null;
+    }
+
+    $normalizado = str_replace(["\r\n", "\r"], "\n", $fragmento);
+    foreach (explode("\n", $normalizado) as $linea) {
+        $imagen = lineaImagenArticulo(trim($linea));
+        if ($imagen !== null) {
+            return $imagen;
+        }
+    }
+
+    return null;
+}
+
+function imagenListadoArticulo(array $articulo): ?array
+{
+    $desdeLinea = primeraImagenArticulo((string) ($articulo['linea_imagen'] ?? ''));
+    if ($desdeLinea !== null) {
+        return $desdeLinea;
+    }
+
+    return primeraImagenArticulo((string) ($articulo['recorte'] ?? ''));
+}
+
+function lineaImagenArticulo(string $linea): ?array
+{
+    if (!preg_match(
+        '/^!\[([^\]\r\n]{1,200})\]\((\/img\/articulos\/[a-f0-9]{32}\.(?:jpg|png|webp))\)$/u',
+        $linea,
+        $coincidencia
+    )) {
+        return null;
+    }
+
+    $alt = trim($coincidencia[1]);
+    if ($alt === '') {
+        return null;
+    }
+
+    return [
+        'alt' => $alt,
+        'url' => $coincidencia[2],
+    ];
 }
 
 function esListaArticulo(string $parrafo): bool
@@ -151,7 +427,7 @@ function marcasDeArticulo(string $linea): string
                 return $coincidencia[0];
             }
 
-            return '<a href="' . e($direccion) . '">' . $coincidencia[1] . '</a>';
+            return '<a href="' . e($direccion) . '" target="_blank" rel="noopener noreferrer">' . $coincidencia[1] . '</a>';
         },
         $texto
     );
@@ -173,6 +449,7 @@ function enlaceDeArticulo(string $direccion): bool
 
 function textoSinMarcas(string $texto): string
 {
+    $texto = preg_replace('/!\[([^\]\n]*)\]\([^)\n]*\)/u', '$1', $texto) ?? $texto;
     $texto = preg_replace('/\*\*([^*]+)\*\*/u', '$1', $texto) ?? $texto;
     $texto = preg_replace('/(?<!\*)\*([^*]+)\*(?!\*)/u', '$1', $texto) ?? $texto;
     $texto = preg_replace('/\[([^\[\]]+)\]\([^)]+\)/u', '$1', $texto) ?? $texto;
@@ -183,16 +460,33 @@ function textoSinMarcas(string $texto): string
 
 function extractoArticulo(string $cuerpo): string
 {
-    $parrafos = parrafosDe($cuerpo);
-    $primero = textoSinMarcas($parrafos[0] ?? '');
-    $primero = preg_replace('/\s+/u', ' ', $primero) ?? '';
-    $maximo = 180;
+    $texto = '';
+    foreach (parrafosDe($cuerpo) as $parrafo) {
+        $lineas = [];
+        foreach (explode("\n", $parrafo) as $linea) {
+            if (lineaImagenArticulo(trim($linea)) !== null) {
+                continue;
+            }
+            $lineas[] = $linea;
+        }
+        if ($lineas === []) {
+            continue;
+        }
 
-    if (mb_strlen($primero) <= $maximo) {
-        return $primero;
+        $limpio = textoSinMarcas(implode("\n", $lineas));
+        $limpio = trim(preg_replace('/\s+/u', ' ', $limpio) ?? '');
+        if ($limpio !== '') {
+            $texto = $limpio;
+            break;
+        }
     }
 
-    $corte = mb_substr($primero, 0, $maximo);
+    $maximo = 180;
+    if (mb_strlen($texto) <= $maximo) {
+        return $texto;
+    }
+
+    $corte = mb_substr($texto, 0, $maximo);
     $espacio = mb_strrpos($corte, ' ');
     if ($espacio !== false && $espacio > 80) {
         $corte = mb_substr($corte, 0, $espacio);

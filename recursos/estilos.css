@@ -705,8 +705,50 @@ img { max-width: 100%; }
 }
 
 .tarjeta-servicio {
+  --imagen-servicio: none;
+  --posicion-servicio: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 23rem;
   align-items: flex-start;
   text-align: left;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.42);
+  background-color: var(--acento-oscuro);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(7, 31, 57, 0.66) 0%,
+      rgba(7, 31, 57, 0.74) 38%,
+      rgba(7, 31, 57, 0.82) 100%
+    ),
+    var(--imagen-servicio);
+  background-position: center, var(--posicion-servicio);
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 16px 34px rgba(7, 31, 57, 0.2);
+  text-shadow: 0 1px 2px rgba(7, 31, 57, 0.32);
+}
+
+.tarjeta-servicio--constitucion_empresas {
+  --imagen-servicio: url("/img/servicios/constitucion-empresas.jpg");
+  --posicion-servicio: center 42%;
+}
+
+.tarjeta-servicio--contabilidad {
+  --imagen-servicio: url("/img/servicios/contabilidad.jpg");
+  --posicion-servicio: center 52%;
+}
+
+.tarjeta-servicio--asesoria_laboral {
+  --imagen-servicio: url("/img/servicios/asesoria-laboral.jpg");
+  --posicion-servicio: center 44%;
+}
+
+.tarjeta-servicio--operacion_renta {
+  --imagen-servicio: url("/img/servicios/operacion-renta.jpg");
+  --posicion-servicio: 38% center;
 }
 
 .tarjeta-servicio h3,
@@ -714,6 +756,8 @@ img { max-width: 100%; }
   margin: 0;
   font-size: 1.12rem;
 }
+
+.tarjeta-servicio h3 { color: #ffffff; }
 
 .tarjeta-servicio .icono {
   width: 3rem;
@@ -725,13 +769,20 @@ img { max-width: 100%; }
 .tarjeta-servicio .icono {
   padding: 0.55rem;
   border-radius: 12px;
-  background: #eaf2f8;
+  background: rgba(245, 248, 250, 0.93);
+  box-shadow: 0 5px 14px rgba(7, 31, 57, 0.18);
+  text-shadow: none;
 }
 
 .servicio-descripcion {
   margin: 0;
   color: var(--suave);
   font-size: 0.95rem;
+}
+
+.tarjeta-servicio .servicio-descripcion,
+.tarjeta-servicio .servicio-beneficios {
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .servicio-beneficios,
@@ -766,6 +817,19 @@ img { max-width: 100%; }
 .tarjeta-servicio .boton {
   align-self: stretch;
   margin-top: auto;
+  color: var(--tinta);
+  background: var(--dorado);
+  box-shadow: 0 6px 16px rgba(7, 31, 57, 0.26);
+  text-shadow: none;
+}
+
+.tarjeta-servicio .boton:hover {
+  color: var(--tinta);
+  background: #d89a24;
+}
+
+.tarjeta-servicio .servicio-beneficios li::before {
+  border-color: #f4c14f;
 }
 
 .tarjeta-profesional p { margin: 0; }
@@ -840,7 +904,36 @@ img { max-width: 100%; }
   font-size: 0.92rem;
 }
 
+.proceso-icono {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: 0.4rem;
+  vertical-align: -0.25rem;
+  fill: none;
+  stroke: var(--dorado);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .proceso .acciones { justify-content: center; }
+
+.bloque-servicios {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(242, 246, 249, 0.48) 0%,
+      rgba(244, 248, 251, 0.55) 34%,
+      rgba(247, 250, 252, 0.78) 68%,
+      #f7fafc 100%
+    ),
+    var(--fondo-escritorio) center 40% / cover no-repeat;
+}
+
+.bloque-servicios .servicios,
+.bloque-servicios .proceso {
+  background: transparent;
+}
 
 /* Zona del faro */
 
@@ -880,14 +973,24 @@ img { max-width: 100%; }
   pointer-events: none;
 }
 
-.zona-faro .acerca,
-.zona-faro .beneficios {
+.zona-faro .acerca {
   background: linear-gradient(
     90deg,
     rgba(12, 55, 99, 0.26) 0%,
     rgba(23, 111, 166, 0.14) 45%,
     rgba(196, 135, 24, 0.1) 100%
   );
+}
+
+.zona-faro .por-que-elegirnos {
+  background: linear-gradient(
+    180deg,
+    rgba(245, 248, 250, 0.94) 0%,
+    rgba(245, 248, 250, 0.9) 6.5rem,
+    rgba(245, 248, 250, 0.42) 11rem,
+    rgba(245, 248, 250, 0.12) 100%
+  ),
+  url("/img/fondo-elegirnos.jpg") center 55% / cover no-repeat;
 }
 
 /* Acerca */
@@ -926,9 +1029,27 @@ img { max-width: 100%; }
 
 .acerca-destacados li {
   display: grid;
-  gap: 0.15rem;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.7rem;
   padding: 0.9rem 1rem;
   border-left: 4px solid var(--dorado);
+}
+
+.acerca-check {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: var(--dorado);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.acerca-texto {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .acerca-destacados strong {
@@ -936,7 +1057,7 @@ img { max-width: 100%; }
   font-size: 1.05rem;
 }
 
-.acerca-destacados span {
+.acerca-texto > span {
   color: var(--suave);
   font-size: 0.92rem;
 }
@@ -944,26 +1065,130 @@ img { max-width: 100%; }
 /* Beneficios */
 
 .tarjeta-beneficio {
+  --imagen-beneficio: none;
+  --posicion-beneficio: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   align-content: start;
   gap: 0.4rem;
   height: 100%;
+  min-height: 15rem;
   padding: 1.2rem 1.15rem;
   border-top: 3px solid var(--verde);
+  color: #ffffff;
+  background-color: var(--acento-oscuro);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(7, 31, 57, 0.66) 0%,
+      rgba(7, 31, 57, 0.74) 38%,
+      rgba(7, 31, 57, 0.82) 100%
+    ),
+    var(--imagen-beneficio);
+  background-position: center, var(--posicion-beneficio);
+  background-repeat: no-repeat;
+  background-size: cover;
+  text-shadow: 0 1px 2px rgba(7, 31, 57, 0.32);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tarjeta-beneficio.vidrio {
+  background-color: var(--acento-oscuro);
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(7, 31, 57, 0.66) 0%,
+      rgba(7, 31, 57, 0.74) 38%,
+      rgba(7, 31, 57, 0.82) 100%
+    ),
+    var(--imagen-beneficio);
+  background-position: center, var(--posicion-beneficio);
+  background-size: cover;
+}
+
+.tarjeta-beneficio--tranquilidad { --imagen-beneficio: url("/img/beneficios/tranquilidad.jpg"); }
+
+.tarjeta-beneficio--acompanamiento {
+  --imagen-beneficio: url("/img/beneficios/acompanamiento-mensual.jpg");
+  --posicion-beneficio: 72% center;
+}
+
+.tarjeta-beneficio--registros {
+  --imagen-beneficio: url("/img/beneficios/registros-al-dia.jpg");
+  --posicion-beneficio: center 62%;
+}
+
+.tarjeta-beneficio--remota {
+  --imagen-beneficio: url("/img/beneficios/atencion-remota.jpg");
+  --posicion-beneficio: 58% center;
 }
 
 .tarjeta-beneficio:nth-child(even) { border-top-color: var(--dorado); }
 
+.beneficio-icono {
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-bottom: 0.15rem;
+  fill: none;
+  stroke: var(--dorado);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+.beneficio-calendario .hoja {
+  fill: rgba(196, 135, 24, 0.18);
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+}
+
+.por-que-elegirnos.preparada .visto,
+.por-que-elegirnos.preparada .linea {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+}
+
+.por-que-elegirnos.preparada .onda { opacity: 0.2; }
+
+.por-que-elegirnos.animada .visto {
+  animation: beneficio-trazo 0.6s ease-out 0.1s both;
+}
+
+.por-que-elegirnos.animada .hoja {
+  animation: cualidad-hoja 0.8s ease-in-out 0.15s both;
+}
+
+.por-que-elegirnos.animada .linea {
+  animation: beneficio-trazo 0.35s ease-out both;
+}
+
+.por-que-elegirnos.animada .linea-1 { animation-delay: 0.1s; }
+.por-que-elegirnos.animada .linea-2 { animation-delay: 0.28s; }
+.por-que-elegirnos.animada .linea-3 { animation-delay: 0.46s; }
+
+.por-que-elegirnos.animada .onda {
+  animation: cualidad-arco 0.45s ease-out both;
+}
+
+.por-que-elegirnos.animada .onda-1 { animation-delay: 0.1s; }
+.por-que-elegirnos.animada .onda-2 { animation-delay: 0.35s; }
+
+@keyframes beneficio-trazo {
+  to { stroke-dashoffset: 0; }
+}
+
 .tarjeta-beneficio h3 {
   margin: 0;
-  color: var(--acento-oscuro);
+  color: #ffffff;
   font-size: 1.05rem;
 }
 
 .tarjeta-beneficio p {
   margin: 0;
-  color: var(--suave);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.93rem;
 }
 
@@ -1185,6 +1410,13 @@ img { max-width: 100%; }
   text-align: left;
 }
 
+.noticia-cuerpo.vidrio {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.9) 100%),
+    url("/img/logo-sii.jpg") center 58% / 78% auto no-repeat,
+    #ffffff;
+}
+
 .noticia-cuerpo h3 {
   margin: 0;
   font-size: 1.05rem;
@@ -1201,6 +1433,12 @@ img { max-width: 100%; }
 }
 
 .noticia-cuerpo .boton { margin-top: auto; }
+
+@media (min-width: 1101px) {
+  .noticia-cuerpo h3 { font-size: 1rem; }
+
+  .noticia-extracto { -webkit-line-clamp: 3; }
+}
 
 .carrusel-controles {
   display: flex;
@@ -1240,6 +1478,22 @@ img { max-width: 100%; }
 }
 
 .carrusel-puntos button[aria-current="true"]::before { background: var(--dorado); }
+
+.carrusel-contador { display: none; }
+
+@media (max-width: 700px) {
+  .carrusel-controles { flex-wrap: nowrap; }
+
+  .carrusel-puntos { display: none; }
+
+  .carrusel-contador {
+    display: inline-block;
+    min-width: 4.5rem;
+    color: var(--acento-oscuro);
+    font-weight: 700;
+    text-align: center;
+  }
+}
 
 /* Pie */
 
@@ -1689,6 +1943,10 @@ img { max-width: 100%; }
   margin-top: 0.15rem;
 }
 
+.contacto-form [hidden] {
+  display: none;
+}
+
 .opciones-tipo-persona {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
@@ -1781,6 +2039,45 @@ textarea {
   padding-left: 1.1rem;
 }
 
+.lienzo > .aviso.toast,
+.contenido > .aviso.toast {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: 5.25rem;
+  width: min(28rem, calc(100% - 2rem));
+  margin: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(16, 42, 76, 0.16);
+  animation: toast-entrada 0.25s ease;
+}
+
+@media (max-width: 700px) {
+  .lienzo > .aviso.toast,
+  .contenido > .aviso.toast {
+    bottom: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso.toast {
+    animation: none;
+  }
+}
+
+@keyframes toast-entrada {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.6rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
 .dias {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(3.9rem, 1fr));
@@ -1817,6 +2114,120 @@ textarea {
   font-size: 0.68rem;
   color: var(--suave);
   text-transform: uppercase;
+}
+
+.calendario-paginas {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.mes-flecha {
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin-top: 0.1rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0;
+  box-shadow: none;
+}
+
+.mes-flecha:hover { transform: none; }
+
+.mes-flecha:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.mes-flecha::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+}
+
+.mes-flecha[data-mes-anterior]::before {
+  transform: translate(-30%, -50%) rotate(-135deg);
+}
+
+.mes-flecha[data-mes-siguiente]::before {
+  transform: translate(-70%, -50%) rotate(45deg);
+}
+
+.calendarios {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.calendarios::-webkit-scrollbar { display: none; }
+
+.calendarios:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 4px;
+}
+
+.mes-calendario {
+  flex: 0 0 100%;
+  min-width: 100%;
+  min-height: 24.5rem;
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.mes-titulo {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.mes-semana,
+.mes-dias {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.mes-semana span {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--suave);
+}
+
+.dia-hueco,
+.dia-apagado {
+  min-height: 44px;
+}
+
+.dia-apagado {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--suave);
+  opacity: 0.4;
+}
+
+.mes-dias .dia-link small {
+  text-transform: none;
 }
 
 .grilla {
@@ -2023,7 +2434,23 @@ body.fondo-reserva::after {
 
 .tarjeta-articulo h2 a:hover { color: var(--acento-oscuro); }
 
-.tarjeta-articulo > p:not(.fecha-articulo) { margin: 0; }
+.tarjeta-articulo > p:not(.fecha-articulo),
+.extracto-articulo { margin: 0; }
+
+.lista-articulos:not(.lista-admin) .tarjeta-articulo {
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.texto-articulo {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.texto-articulo > :is(h2, p, .acciones-articulo) { margin: 0; }
 
 .fecha-articulo {
   margin: 0;
@@ -2062,10 +2489,21 @@ body.fondo-reserva::after {
   font-size: 0.9rem;
 }
 
-.articulo { max-width: 42rem; }
+.articulo {
+  width: min(100%, 45rem);
+  margin-inline: auto;
+}
 
-.articulo .cuerpo p:last-child,
-.articulo .cuerpo ul:last-child { margin-bottom: 0; }
+.meta-articulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.meta-articulo .acciones-articulo { margin-top: 0; }
 
 .articulo .cuerpo ul {
   margin: 0 0 1rem;
@@ -2074,6 +2512,66 @@ body.fondo-reserva::after {
 }
 
 .articulo .cuerpo li { margin: 0.2rem 0; }
+
+.articulo .cuerpo figure {
+  margin: 1.15rem 0 1.75rem;
+  max-height: 30rem;
+  overflow: hidden;
+  border-radius: var(--radio);
+}
+
+.articulo .cuerpo figure:first-child { margin-top: 0; }
+
+.articulo .cuerpo figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.articulo .cuerpo p:last-child,
+.articulo .cuerpo ul:last-child,
+.articulo .cuerpo figure:last-child { margin-bottom: 0; }
+
+.miniatura-articulo {
+  display: block;
+  width: 9rem;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radio);
+  justify-self: start;
+}
+
+@media (min-width: 40rem) {
+  .lista-articulos:not(.lista-admin) .tarjeta-articulo:has(.miniatura-articulo) {
+    grid-template-columns: 9rem minmax(0, 1fr);
+  }
+}
+
+.estado-articulo {
+  margin-left: 0.6rem;
+  color: var(--dorado);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.estado-articulo.publicado { color: var(--verde); }
+
+.paginacion-articulos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.paginacion-articulos p {
+  margin: 0;
+  color: var(--suave);
+}
 
 .campo-cuerpo {
   display: grid;
@@ -2099,6 +2597,11 @@ body.fondo-reserva::after {
   height: 1.05rem;
 }
 
+.barra-formato .boton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .acciones-articulo {
   display: flex;
   flex-wrap: wrap;
@@ -2109,8 +2612,12 @@ body.fondo-reserva::after {
 
 .acciones-articulo form { display: inline-flex; margin: 0; }
 
+.editor-articulo {
+  max-width: none;
+}
+
 .editor-articulo textarea {
-  min-height: 14rem;
+  min-height: 32rem;
   resize: vertical;
 }
 
@@ -2160,7 +2667,7 @@ html.con-revelado body.portada .visto {
   transform: none;
 }
 
-/* Blur direccional de 4 px */
+/* Blur direccional de 2.5 px */
 
 body.portada::before,
 body.portada::after {
@@ -2172,21 +2679,21 @@ body.portada::after {
   height: 4rem;
   opacity: 0;
   pointer-events: none;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(2.5px);
+  backdrop-filter: blur(2.5px);
   transition: opacity 0.25s ease;
 }
 
 body.portada::before {
   top: 0;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.12), transparent);
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.75) 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.75) 55%, transparent 100%);
 }
 
 body.portada::after {
   bottom: 0;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.12), transparent);
   -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.75) 55%, transparent 100%);
   mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.75) 55%, transparent 100%);
 }
@@ -2471,6 +2978,245 @@ body.portada.scroll-arriba::before { opacity: 0; }
   .grilla { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
 }
 
+/* Portada ancha: la columna crece y la foto del escritorio no queda como franja */
+
+@media (min-width: 1280px) {
+  body.portada {
+    --ancho-portada: 1400px;
+    --margen: max(1.5rem, calc((100% - var(--ancho-portada)) / 2));
+  }
+
+  body.portada .seccion-inner,
+  body.portada .pie-inner {
+    width: min(var(--ancho-portada), 100%);
+  }
+
+  body.portada .banner {
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  body.portada .zona-escritorio::before,
+  body.portada .zona-escritorio::after {
+    content: none;
+  }
+
+  body.portada .banner::before,
+  body.portada .banner::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -1rem;
+    background: var(--fondo-escritorio) center 60% / cover no-repeat;
+    pointer-events: none;
+  }
+
+  body.portada .banner::before {
+    filter: blur(12px) saturate(0.7);
+    transform: scale(1.025);
+  }
+
+  body.portada .banner::after {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 0, 0, 0.25) 22%,
+      rgba(0, 0, 0, 0.85) 50%,
+      #000000 70%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 0, 0, 0.25) 22%,
+      rgba(0, 0, 0, 0.85) 50%,
+      #000000 70%
+    );
+  }
+
+  body.portada .franja-cualidades {
+    background: var(--superficie);
+  }
+
+  body.portada .franja-cualidades ul {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  body.portada .bloque-servicios .servicios,
+  body.portada .bloque-servicios .proceso {
+    background: transparent;
+  }
+}
+
+/* Armonía visual 2026-10 */
+/* Borrar desde este comentario hasta «Fin armonía visual 2026-10» revierte estos ajustes. */
+
+body.portada .hero-slide {
+  --velo: linear-gradient(
+    180deg,
+    rgba(8, 34, 63, 0.74) 0%,
+    rgba(8, 34, 63, 0.58) 14%,
+    rgba(8, 34, 63, 0.82) 30%,
+    rgba(8, 34, 63, 0.78) 64%,
+    rgba(8, 34, 63, 0.56) 84%,
+    rgba(8, 34, 63, 0.68) 100%
+  );
+}
+
+@media (min-width: 768px) {
+  body.portada .hero-slide {
+    --velo: linear-gradient(
+      100deg,
+      rgba(8, 34, 63, 0.92) 0%,
+      rgba(8, 34, 63, 0.86) 16%,
+      rgba(8, 34, 63, 0.72) 32%,
+      rgba(12, 55, 99, 0.40) 48%,
+      rgba(12, 55, 99, 0.22) 70%,
+      rgba(12, 55, 99, 0.16) 100%
+    );
+  }
+}
+
+body.portada .bloque-servicios {
+  background: var(--fondo-escritorio) center 40% / cover no-repeat;
+}
+
+body.portada .bloque-servicios .servicios {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 31, 57, 0.84) 0%,
+    rgba(7, 31, 57, 0.80) calc(100% - 2.75rem),
+    rgba(7, 31, 57, 0.70) 100%
+  );
+}
+
+body.portada .bloque-servicios .servicios h2 {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(7, 31, 57, 0.35);
+}
+
+body.portada .bloque-servicios .servicios h2::after {
+  background: var(--dorado-claro);
+}
+
+body.portada .bloque-servicios .proceso {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 31, 57, 0.70) 0,
+    rgba(247, 250, 252, 0.94) 2.6rem,
+    #f7fafc 4rem
+  );
+}
+
+body.portada .tarjeta-servicio .icono {
+  width: 2.45rem;
+  height: 2.45rem;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--dorado);
+  fill: none;
+  stroke: var(--dorado);
+  stroke-width: 1.65;
+}
+
+body.portada .tarjeta-servicio .icono .marca-llena {
+  fill: var(--dorado);
+  stroke: none;
+}
+
+body.portada .tarjeta-servicio > .boton {
+  border: 2px solid var(--dorado);
+  background: transparent;
+  color: var(--dorado-claro);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+body.portada .tarjeta-servicio > .boton:hover {
+  border-color: var(--dorado);
+  background: var(--dorado);
+  color: var(--acento-noche);
+  box-shadow: 0 6px 16px rgba(7, 31, 57, 0.26);
+}
+
+body.portada .tarjeta-beneficio,
+body.portada .tarjeta-beneficio:nth-child(even) {
+  border-top-color: var(--dorado);
+}
+
+body.portada .actualidad {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(240, 245, 250, 0.64) 0%,
+      rgba(244, 247, 250, 0.78) 58%,
+      rgba(247, 250, 252, 0.92) 100%
+    ),
+    url("/img/fondo-ciudad.jpg") center 40% / cover no-repeat;
+}
+
+body.portada .actualidad::before {
+  background:
+    linear-gradient(180deg, rgba(240, 245, 250, 0.58), rgba(247, 250, 252, 0.88)),
+    url("/img/fondo-ciudad.jpg") center 40% / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 68%, rgba(0, 0, 0, 0.88) 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 68%, rgba(0, 0, 0, 0.88) 100%);
+}
+
+body.portada .noticia-cuerpo.vidrio {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.96) 100%) center / cover no-repeat,
+    url("/img/logo-sii.jpg") right 6% bottom 0.7rem / 55% auto no-repeat,
+    #ffffff;
+}
+
+body.portada .contacto {
+  background: linear-gradient(180deg, #f5f8fa 0%, #f7fafc 100%);
+  border-top: 2px solid var(--dorado);
+}
+
+body.portada .contacto-whatsapp .contacto-whatsapp-boton {
+  border: 0;
+  background: var(--dorado);
+  color: var(--acento-noche);
+  box-shadow: 0 6px 16px rgba(122, 78, 8, 0.22);
+}
+
+body.portada .contacto-whatsapp .contacto-whatsapp-boton:hover {
+  background: var(--dorado-claro);
+  color: var(--acento-noche);
+}
+
+@media (max-width: 700px) {
+  body.portada .whatsapp-boton {
+    right: 0.15rem;
+    bottom: 20.25rem;
+    width: 3.25rem;
+    height: 3.25rem;
+    min-height: 3.25rem;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+  }
+
+  body.portada .whatsapp-boton > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Fin armonía visual 2026-10 */
+
 @media (prefers-reduced-motion: reduce) {
   .carrusel-pista,
   .tarjeta-servicio,
@@ -2502,8 +3248,13 @@ body.portada.scroll-arriba::before { opacity: 0; }
 
   .franja-cualidades .arco,
   .franja-cualidades .brazo,
-  .franja-cualidades .hoja {
+  .franja-cualidades .hoja,
+  .por-que-elegirnos .visto,
+  .por-que-elegirnos .linea,
+  .por-que-elegirnos .onda,
+  .por-que-elegirnos .hoja {
     opacity: 1;
+    stroke-dashoffset: 0;
     animation: none !important;
   }
 }

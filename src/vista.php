@@ -7,9 +7,13 @@ function e(string $texto): string
     return htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
 }
 
-function aviso(string $tipo, string $mensaje): void
+function aviso(string $tipo, string $mensaje, bool $toast = true): void
 {
-    $_SESSION['aviso'] = ['tipo' => $tipo, 'mensaje' => $mensaje];
+    $_SESSION['aviso'] = [
+        'tipo' => $tipo,
+        'mensaje' => $mensaje,
+        'toast' => $toast,
+    ];
 }
 
 function tomarAviso(): ?array
@@ -103,6 +107,9 @@ function icono(string $nombre): string
         'enlace' => '<path d="M8.5 11.5 7.1 12.9a2.5 2.5 0 0 1-3.5-3.5l1.4-1.4"/>'
             . '<path d="M11.5 8.5 12.9 7.1a2.5 2.5 0 0 1 3.5 3.5l-1.4 1.4"/>'
             . '<path d="M8.7 11.3 11.3 8.7"/>',
+        'imagen' => '<rect x="2.4" y="3.6" width="15.2" height="12.8" rx="1.6"/>'
+            . '<circle class="marca-llena" cx="7.1" cy="7.6" r="1.35"/>'
+            . '<path d="m3.6 14.6 3.5-3.3 2.3 2.1 2.3-2.2 4.7 4.2"/>',
     ];
 
     return '<svg class="icono" viewBox="0 0 20 20" aria-hidden="true" focusable="false">'
@@ -167,10 +174,25 @@ function abrirPagina(string $titulo, bool $portada = false): void
     echo '</nav></header>';
     echo $portada ? '<main class="lienzo">' : '<main class="contenido">';
 
+    $lineasError = lineasAviso($GLOBALS['avisos_errores'] ?? []);
+    unset($GLOBALS['avisos_errores']);
+
     if ($aviso) {
-        $clase = ($aviso['tipo'] ?? '') === 'ok' ? 'aviso ok' : 'aviso error';
-        echo '<p class="' . e($clase) . '" role="status">' . e((string) $aviso['mensaje']) . '</p>';
+        $mensaje = trim((string) ($aviso['mensaje'] ?? ''));
+        if ($mensaje !== '') {
+            if (($aviso['tipo'] ?? '') === 'ok') {
+                echo htmlAvisoToast('ok', [$mensaje]);
+            } elseif (!in_array($mensaje, $lineasError, true)) {
+                array_unshift($lineasError, $mensaje);
+            }
+        }
     }
+
+    if ($lineasError !== []) {
+        echo htmlAvisoToast('error', $lineasError);
+    }
+
+    $GLOBALS['pagina_abierta'] = true;
 }
 
 function cerrarPagina(): void
@@ -288,7 +310,7 @@ function marcaWhatsApp(): string
 
 function enlaceWhatsApp(): string
 {
-    return 'https://wa.me/56854650115?text=' . rawurlencode('Hola, quisiera hacer una consulta.');
+    return 'https://wa.me/56974531422?text=' . rawurlencode('Hola, quisiera hacer una consulta.');
 }
 
 function accesoWhatsApp(): string
@@ -301,13 +323,42 @@ function accesoWhatsApp(): string
 
 function erroresDe(array $errores): void
 {
-    if ($errores === []) {
+    $lineas = lineasAviso($errores);
+    if ($lineas === []) {
         return;
     }
 
-    echo '<div class="aviso error" role="alert"><ul>';
-    foreach ($errores as $error) {
-        echo '<li>' . e($error) . '</li>';
+    if (!empty($GLOBALS['pagina_abierta'])) {
+        echo htmlAvisoToast('error', $lineas);
+        return;
     }
-    echo '</ul></div>';
+
+    if (!isset($GLOBALS['avisos_errores']) || !is_array($GLOBALS['avisos_errores'])) {
+        $GLOBALS['avisos_errores'] = [];
+    }
+    foreach ($lineas as $error) {
+        if (!in_array($error, $GLOBALS['avisos_errores'], true)) {
+            $GLOBALS['avisos_errores'][] = $error;
+        }
+    }
+}
+
+function lineasAviso(array $errores): array
+{
+    $lineas = [];
+    foreach ($errores as $error) {
+        $texto = trim((string) $error);
+        if ($texto !== '' && !in_array($texto, $lineas, true)) {
+            $lineas[] = $texto;
+        }
+    }
+
+    return $lineas;
+}
+
+function htmlAvisoToast(string $tipo, array $lineas): string
+{
+    $clase = $tipo === 'ok' ? 'aviso ok toast' : 'aviso error toast';
+
+    return '<p class="' . e($clase) . '" role="status">' . implode('<br>', array_map('e', $lineas)) . '</p>';
 }

@@ -64,7 +64,8 @@ function koraRenovarIdempotencia(): void
 function koraSolicitud(string $metodo, string $ruta, ?array $cuerpo = null, ?string $idempotencia = null): array
 {
     $config = koraConfig();
-    $canal = curl_init($config['url'] . $ruta);
+    $destino = strncmp($ruta, 'https://', 8) === 0 ? $ruta : $config['url'] . $ruta;
+    $canal = curl_init($destino);
     if ($canal === false) {
         return ['ok' => false, 'estado' => 0, 'datos' => null];
     }
@@ -111,6 +112,37 @@ function koraSolicitud(string $metodo, string $ruta, ?array $cuerpo = null, ?str
         'estado' => $estado,
         'datos' => is_array($datos) ? $datos : null,
     ];
+}
+
+function koraCuerpoContacto(array $datos): array
+{
+    $contacto = [
+        'name' => nombreCliente((string) ($datos['nombre'] ?? ''), (string) ($datos['apellido'] ?? '')),
+        'email' => (string) ($datos['email'] ?? ''),
+        'phone' => (string) ($datos['telefono'] ?? ''),
+    ];
+    $cuerpo = ['contacts' => [$contacto]];
+    if (($datos['tipo_persona'] ?? '') === 'empresa') {
+        $cuerpo = [
+            'company' => [
+                'name' => (string) ($datos['razon_social'] ?? ''),
+                'rut' => (string) ($datos['rut_empresa'] ?? ''),
+            ],
+            'contacts' => [$contacto],
+        ];
+    }
+
+    return $cuerpo;
+}
+
+function koraUrlEmpresasConContactos(): string
+{
+    return koraConfig()['url'] . '/companies/with-contacts';
+}
+
+function koraRegistrarContacto(array $datos): array
+{
+    return koraSolicitud('POST', koraUrlEmpresasConContactos(), koraCuerpoContacto($datos));
 }
 
 function koraMomento(string $valor): ?DateTimeImmutable
@@ -172,8 +204,13 @@ function koraConsultarBloques(): array
     }
 
     $calendario = koraConfig()['calendario'];
+    $desde = new DateTimeImmutable('today', zonaHoraria());
+    $hasta = $desde->modify('+91 days');
     $respuesta = koraSolicitud('GET', '/agenda/blocks?' . http_build_query([
         'calendar_id' => $calendario,
+        'availability' => 'open',
+        'from' => $desde->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+        'to' => $hasta->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
     ]));
     if (!$respuesta['ok'] || !is_array($respuesta['datos']['data'] ?? null)) {
         $consulta = [
@@ -318,7 +355,7 @@ function koraAnularReserva(string $koraId): bool
 
 function koraSolicitar(array $cliente, string $bloqueId, string $servicio): array
 {
-    $validacion = validarClienteReserva($cliente);
+    $validacion = validarContacto($cliente);
     if ($validacion['errores'] !== []) {
         return ['error' => $validacion['errores'][0], 'cita' => null, 'cupo' => false];
     }
@@ -336,6 +373,22 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
         return ['error' => $obtenido['error'], 'cita' => null, 'cupo' => $obtenido['cupo']];
     }
     $bloque = $obtenido['bloque'];
+
+    $altaContacto = koraRegistrarContacto($cliente);
+    if (!$altaContacto['ok'] && (int) $altaContacto['estado'] !== 409) {
+        return [
+            'error' => 'No pudimos registrar tus datos. Inténtalo de nuevo o escríbenos por WhatsApp.',
+            'cita' => null,
+            'cupo' => false,
+        ];
+    }
+
+    $notas = 'Trámite: ' . etiquetaServicio($servicio) . "\n"
+        . 'Tipo de persona o régimen: ' . etiquetaTipoPersona($cliente['tipo_persona']);
+    if ($cliente['tipo_persona'] === 'empresa') {
+        $notas .= "\n" . 'Razón social: ' . $cliente['razon_social']
+            . "\n" . 'RUT empresa: ' . $cliente['rut_empresa'];
+    }
 
     $pdo = base();
     try {
@@ -374,8 +427,7 @@ function koraSolicitar(array $cliente, string $bloqueId, string $servicio): arra
             'email' => $cliente['email'],
             'phone' => $cliente['telefono'],
         ],
-        'notes' => 'Trámite: ' . etiquetaServicio($servicio) . "\n"
-            . 'Tipo de persona o régimen: ' . etiquetaTipoPersona($cliente['tipo_persona']),
+        'notes' => $notas,
         'external_ref' => $referencia,
     ], $referencia);
 

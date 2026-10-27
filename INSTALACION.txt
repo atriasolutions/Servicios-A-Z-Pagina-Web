@@ -28,6 +28,7 @@ En el servidor se crea otro config.php a partir de config.example.php.
    Si actualizas una instalación que ya tenía citas, no vuelvas a importar
    schema.sql. Importa una sola vez sql/migracion-reservas-publicas.sql.
    Para la página de artículos, importa una sola vez sql/migracion-articulos.sql.
+   Para borradores de artículos, importa una sola vez sql/migracion-articulos-estado.sql.
    Para confirmar las reservas desde el correo, importa una sola vez sql/migracion-confirmacion.sql.
    Para confirmar las reservas desde Kora, importa una sola vez
    sql/migracion-confirmacion-kora.sql.

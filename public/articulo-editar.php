@@ -10,6 +10,7 @@ $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
 $existente = $id > 0 ? obtenerArticulo($id) : null;
 $titulo = (string) ($existente['titulo'] ?? '');
 $cuerpo = (string) ($existente['cuerpo'] ?? '');
+$estadoGuardado = (string) ($existente['estado'] ?? '');
 $errores = [];
 
 if ($id > 0 && $existente === null && $_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -39,21 +40,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $titulo = (string) ($_POST['titulo'] ?? '');
         $cuerpo = (string) ($_POST['cuerpo'] ?? '');
-        $resultado = guardarArticulo($id > 0 ? $id : null, $titulo, $cuerpo);
+        $estado = (string) ($_POST['estado'] ?? '');
+        $resultado = guardarArticulo($id > 0 ? $id : null, $titulo, $cuerpo, $estado);
         $errores = $resultado['errores'];
         if ($errores === [] && $resultado['id'] !== null) {
-            aviso('ok', $id > 0 ? 'Guardaste los cambios.' : 'Publicaste el artículo.');
+            if ($estado === 'borrador') {
+                $mensaje = 'Guardaste el borrador.';
+            } elseif ($id > 0) {
+                $mensaje = 'Publicaste los cambios.';
+            } else {
+                $mensaje = 'Publicaste el artículo.';
+            }
+            aviso('ok', $mensaje);
             redirigir('articulos-admin.php');
         }
     }
 }
 
+erroresDe($errores);
 abrirPagina($id > 0 ? 'Editar artículo' : 'Nuevo artículo');
 ?>
 <section class="articulo">
   <h1><?= $id > 0 ? 'Editar artículo' : 'Nuevo artículo' ?></h1>
-  <p>El título y el texto quedan visibles para quien visite el sitio. Una línea en blanco separa los párrafos. Los botones aplican negrita, cursiva, lista o enlace al texto seleccionado.</p>
-  <?php erroresDe($errores); ?>
+  <p>Publicar muestra el artículo en el sitio. Un borrador queda solo en la administración. Una línea en blanco separa los párrafos. Los botones aplican negrita, cursiva, lista o enlace al texto seleccionado. Imagen sube un archivo y lo inserta en su propia línea.</p>
+  <?php if ($id > 0): ?>
+    <p>Ahora está <?= $estadoGuardado === 'publicado' ? 'publicado' : 'en borrador' ?>.</p>
+  <?php endif; ?>
   <form class="formulario editor-articulo" method="post" action="articulo-editar.php<?= $id > 0 ? '?id=' . e((string) $id) : '' ?>">
     <?= campoCsrf() ?>
     <?php if ($id > 0): ?>
@@ -70,11 +82,19 @@ abrirPagina($id > 0 ? 'Editar artículo' : 'Nuevo artículo');
         <button class="boton secundario" type="button" data-marca="cursiva"><?= icono('cursiva') ?><span>Cursiva</span></button>
         <button class="boton secundario" type="button" data-marca="lista"><?= icono('lista') ?><span>Lista</span></button>
         <button class="boton secundario" type="button" data-marca="enlace"><?= icono('enlace') ?><span>Enlace</span></button>
+        <button class="boton secundario" type="button" data-marca="imagen"><?= icono('imagen') ?><span>Imagen</span></button>
+        <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-imagen-articulo>
       </span>
-      <textarea id="cuerpo" name="cuerpo" rows="14" required><?= e($cuerpo) ?></textarea>
+      <textarea id="cuerpo" name="cuerpo" rows="24" required><?= e($cuerpo) ?></textarea>
     </div>
     <div class="acciones-articulo">
-      <button class="boton" type="submit">Guardar</button>
+      <?php if ($estadoGuardado === 'publicado'): ?>
+        <button class="boton" type="submit" name="estado" value="publicado">Publicar</button>
+        <button class="boton secundario" type="submit" name="estado" value="borrador">Guardar borrador</button>
+      <?php else: ?>
+        <button class="boton secundario" type="submit" name="estado" value="borrador">Guardar borrador</button>
+        <button class="boton" type="submit" name="estado" value="publicado">Publicar</button>
+      <?php endif; ?>
       <a class="boton secundario" href="articulos-admin.php">Cancelar</a>
     </div>
   </form>

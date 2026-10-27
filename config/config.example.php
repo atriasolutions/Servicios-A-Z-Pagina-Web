@@ -37,14 +37,14 @@ return [
     ],
     // La llave real va solo en config.php, que no se sube a git.
     'kora' => [
-        'url' => 'https://atriasolutions.koracrm.cl/api/public/v1',
+        'url' => 'https://servicios-contables-a-z.koracrm.cl/api/public/v1',
         'llave' => '',
-        'calendario' => '13be6a3e-4c0f-47e9-a588-869967d76950',
+        'calendario' => '21baf558-2413-41db-9e87-1fd6c34544fb',
         // Se genera al crear el webhook en Kora. No uses aquí la llave de la API.
         'webhook_secreto' => '',
     ],
     'correo' => [
-        'administrador' => 'mmb21894@gmail.com',
+        'administrador' => 'contabilidad@scontablesayz.cl',
         // Contraseña de aplicación de Gmail. No es la contraseña normal de la cuenta.
         'smtp_clave' => '',
     ],
@@ -56,6 +56,6 @@ return [
     'noticias' => [
         'rss' => 'https://www.sii.cl/pagina/actualizada/noticias/rss/siiall_rss.xml',
         'cache_horas' => 4,
-        'limite' => 9,
+        'limite' => 24,
     ],
 ];

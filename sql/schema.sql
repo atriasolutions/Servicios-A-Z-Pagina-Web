@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS articulos (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(160) NOT NULL,
   cuerpo TEXT NOT NULL,
+  estado ENUM('borrador', 'publicado') NOT NULL DEFAULT 'publicado',
   publicado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

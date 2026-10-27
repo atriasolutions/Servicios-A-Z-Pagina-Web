@@ -25,6 +25,34 @@ Licencia: https://www.pexels.com/license/
 
 Uso en la portada: las diapositivas del carrusel principal reutilizan fondo-reserva.jpg, fondo-articulos.jpg y fondo-escritorio.jpg, con los créditos indicados arriba.
 
+Foto de fondo de «Por qué elegirnos»: fondo-elegirnos.jpg
+
+Autor: Artem Podrez
+Foto: https://www.pexels.com/photo/6779571/
+Licencia: https://www.pexels.com/license/
+
 Pendiente: fondo-faro.jpg y fondo-ciudad.jpg todavía no tienen autoría ni licencia registradas en este archivo. Hay que completarlas con la fuente original antes de publicar.
+
+Fotos de las tarjetas de «Por qué elegirnos»:
+
+- beneficios/tranquilidad.jpg
+- beneficios/acompanamiento-mensual.jpg
+- beneficios/registros-al-dia.jpg
+- beneficios/atencion-remota.jpg
+
+Imágenes aportadas para este proyecto. Su autoría, fuente y licencia están pendientes de registro antes de publicar.
+
+Fotos de las tarjetas de servicios:
+
+- servicios/constitucion-empresas.jpg
+- servicios/contabilidad.jpg
+- servicios/asesoria-laboral.jpg
+- servicios/operacion-renta.jpg
+
+Imágenes aportadas para este proyecto. Su autoría, fuente y licencia están pendientes de registro antes de publicar.
+
+Logo de fondo de las tarjetas de «Actualidad tributaria»: logo-sii.jpg
+
+Marca del Servicio de Impuestos Internos (SII). Se usa solo para identificar la fuente de las noticias enlazadas; no implica relación ni respaldo del SII.
 
 Pexels permite usar las imágenes en el sitio, también con fin comercial, sin pago. El crédito se deja aquí. La foto no es la oficina de Servicios Contables A&Z.

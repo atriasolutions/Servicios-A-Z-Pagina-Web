@@ -316,18 +316,113 @@ function validarClienteReserva(array $entrada): array
     ) {
         $errores[] = 'Escribe un apellido válido de hasta 120 letras.';
     }
-    if (filter_var($datos['email'], FILTER_VALIDATE_EMAIL) === false || strlen($datos['email']) > 190) {
-        $errores[] = 'El correo no es válido.';
+    if (!correoValido($datos['email'])) {
+        $errores[] = 'Escribe un correo válido, por ejemplo nombre@correo.cl.';
     }
-    $digitos = preg_replace('/\D+/', '', $datos['telefono']) ?? '';
-    if (strlen($datos['telefono']) > 40 || strlen($digitos) < 6 || strlen($digitos) > 20) {
-        $errores[] = 'El teléfono tiene que tener entre 6 y 20 números.';
+    $celular = celularChileno($datos['telefono']);
+    if ($celular === null) {
+        $errores[] = 'Escribe un celular chileno, por ejemplo +56 9 1234 5678.';
+    } else {
+        $datos['telefono'] = $celular;
     }
     if ($datos['tipo_persona'] === null) {
         $errores[] = 'Elige un tipo de persona o régimen.';
     }
 
     return ['datos' => $datos, 'errores' => $errores];
+}
+
+function correoValido(string $email): bool
+{
+    if ($email === '' || strlen($email) > 190 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        return false;
+    }
+
+    return preg_match('/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i', $email) === 1;
+}
+
+function celularChileno(string $telefono): ?string
+{
+    if (strlen($telefono) > 40) {
+        return null;
+    }
+
+    $digitos = preg_replace('/\D+/', '', $telefono) ?? '';
+    if (strlen($digitos) === 11 && strncmp($digitos, '569', 3) === 0) {
+        $nacional = substr($digitos, 2);
+    } elseif (strlen($digitos) === 10 && strncmp($digitos, '09', 2) === 0) {
+        $nacional = substr($digitos, 1);
+    } elseif (strlen($digitos) === 9 && strncmp($digitos, '9', 1) === 0) {
+        $nacional = $digitos;
+    } else {
+        return null;
+    }
+
+    if (preg_match('/^9\d{8}$/', $nacional) !== 1) {
+        return null;
+    }
+
+    return '+56 ' . $nacional[0] . ' ' . substr($nacional, 1, 4) . ' ' . substr($nacional, 5);
+}
+
+function validarContacto(array $entrada): array
+{
+    $validacion = validarClienteReserva($entrada);
+    $datos = $validacion['datos'];
+    $errores = $validacion['errores'];
+    $datos['razon_social'] = '';
+    $datos['rut_empresa'] = '';
+
+    if ($datos['tipo_persona'] !== 'empresa') {
+        return ['datos' => $datos, 'errores' => $errores];
+    }
+
+    $razon = trim((string) ($entrada['razon_social'] ?? ''));
+    $rut = trim((string) ($entrada['rut_empresa'] ?? ''));
+    $datos['razon_social'] = $razon;
+    $datos['rut_empresa'] = $rut;
+
+    $largoRazon = function_exists('mb_strlen') ? mb_strlen($razon, 'UTF-8') : strlen($razon);
+    if ($largoRazon < 2 || $largoRazon > 200 || preg_match('/[\x00-\x1F\x7F]/', $razon) === 1) {
+        $errores[] = 'Escribe la razón social, entre 2 y 200 caracteres.';
+    }
+
+    $normalizado = rutEmpresaValido($rut);
+    if ($normalizado === null) {
+        $errores[] = 'El RUT de la empresa no es válido.';
+    } else {
+        $datos['rut_empresa'] = $normalizado;
+    }
+
+    return ['datos' => $datos, 'errores' => $errores];
+}
+
+function rutEmpresaValido(string $rut): ?string
+{
+    $limpio = strtoupper(preg_replace('/[^0-9kK]/', '', $rut) ?? '');
+    if (strlen($limpio) < 2 || strlen($limpio) > 9) {
+        return null;
+    }
+
+    $verificador = substr($limpio, -1);
+    $cuerpo = substr($limpio, 0, -1);
+    if ($cuerpo === '' || preg_match('/^\d+$/', $cuerpo) !== 1) {
+        return null;
+    }
+
+    $suma = 0;
+    $factor = 2;
+    for ($indice = strlen($cuerpo) - 1; $indice >= 0; $indice--) {
+        $suma += (int) $cuerpo[$indice] * $factor;
+        $factor = $factor === 7 ? 2 : $factor + 1;
+    }
+    $resto = 11 - ($suma % 11);
+    $esperado = $resto === 11 ? '0' : ($resto === 10 ? 'K' : (string) $resto);
+    if ($verificador !== $esperado) {
+        return null;
+    }
+
+    return number_format((int) $cuerpo, 0, '', '.') . '-' . $verificador;
 }
 
 function reservarBloque(array $cliente, string $fecha, string $hora, string $servicio): array

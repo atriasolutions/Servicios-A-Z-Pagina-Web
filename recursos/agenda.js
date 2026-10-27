@@ -1,4 +1,85 @@
 (function () {
+  var correo = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+
+  function esCelularChileno(valor) {
+    var digitos = valor.replace(/\D/g, "");
+    if (digitos.length === 11 && digitos.indexOf("569") === 0) {
+      digitos = digitos.slice(2);
+    } else if (digitos.length === 10 && digitos.indexOf("09") === 0) {
+      digitos = digitos.slice(1);
+    }
+    return /^9\d{8}$/.test(digitos);
+  }
+
+  document.querySelectorAll(".contacto-form, .reserva-publica").forEach(function (formulario) {
+    var email = formulario.querySelector('input[name="email"]');
+    var telefono = formulario.querySelector('input[name="telefono"]');
+
+    function revisar(entrada) {
+      if (!entrada || entrada.disabled) {
+        return;
+      }
+      entrada.setCustomValidity("");
+      if (entrada.value.trim() === "") {
+        return;
+      }
+      if (entrada === email && !correo.test(entrada.value.trim())) {
+        entrada.setCustomValidity("Escribe un correo válido, por ejemplo nombre@correo.cl.");
+      }
+      if (entrada === telefono && !esCelularChileno(entrada.value)) {
+        entrada.setCustomValidity("Escribe un celular chileno, por ejemplo +56 9 1234 5678.");
+      }
+    }
+
+    [email, telefono].forEach(function (entrada) {
+      if (!entrada) {
+        return;
+      }
+      entrada.addEventListener("input", function () {
+        revisar(entrada);
+      });
+    });
+    formulario.addEventListener("submit", function () {
+      revisar(email);
+      revisar(telefono);
+    }, true);
+  });
+})();
+
+(function () {
+  document.querySelectorAll(".contacto-form, .reserva-publica").forEach(function (formulario) {
+    var campos = formulario.querySelectorAll("[data-campo-empresa]");
+    var etiquetaNombre = formulario.querySelector("[data-etiqueta-nombre]");
+    var etiquetaContacto = formulario.querySelector("[data-etiqueta-contacto]");
+
+    function aplicarTipoContacto() {
+      var elegido = formulario.querySelector('input[name="tipo_persona"]:checked');
+      var empresa = elegido !== null && elegido.value === "empresa";
+      campos.forEach(function (campo) {
+        campo.hidden = !empresa;
+        campo.querySelectorAll("input").forEach(function (entrada) {
+          entrada.disabled = !empresa;
+          entrada.required = empresa;
+        });
+      });
+      if (etiquetaNombre) {
+        etiquetaNombre.hidden = empresa;
+      }
+      if (etiquetaContacto) {
+        etiquetaContacto.hidden = !empresa;
+      }
+    }
+
+    formulario.addEventListener("change", function (evento) {
+      if (evento.target && evento.target.name === "tipo_persona") {
+        aplicarTipoContacto();
+      }
+    });
+    aplicarTipoContacto();
+  });
+})();
+
+(function () {
   document.querySelectorAll("form[data-confirmar]").forEach(function (formulario) {
     formulario.addEventListener("submit", function (evento) {
       var texto = formulario.getAttribute("data-confirmar");
@@ -50,12 +131,16 @@
   var siguiente = carrusel.querySelector("[data-carrusel-siguiente]");
   var puntos = carrusel.querySelector("[data-carrusel-puntos]");
   var estado = carrusel.querySelector("[data-carrusel-estado]");
+  var contador = carrusel.querySelector("[data-carrusel-contador]");
   var pagina = 0;
   var temporizador = 0;
   var reducir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function porPagina() {
-    return window.innerWidth <= 700 ? 1 : 3;
+    if (window.innerWidth <= 700) {
+      return 1;
+    }
+    return window.innerWidth <= 1100 ? 2 : 4;
   }
 
   function totalPaginas() {
@@ -102,6 +187,9 @@
     carrusel.querySelector(".carrusel-controles").hidden = total < 2;
     if (estado) {
       estado.textContent = "Página " + (pagina + 1) + " de " + total;
+    }
+    if (contador) {
+      contador.textContent = (pagina + 1) + " / " + total;
     }
   }
 
@@ -415,7 +503,7 @@
     }
     direccion = direccion.trim();
     if (!/^https?:\/\//i.test(direccion)) {
-      window.alert("La dirección tiene que empezar por http:// o https://.");
+      mostrarToast("La dirección tiene que empezar por http:// o https://.");
       return;
     }
     var visible = elegido || "enlace";
@@ -423,9 +511,120 @@
     reemplazar(inicio, fin, marca, inicio + 1, inicio + 1 + visible.length);
   }
 
+  var entradaImagen = barra.querySelector("[data-imagen-articulo]");
+  var botonImagen = barra.querySelector('[data-marca="imagen"]');
+  var formulario = cuadro.closest("form");
+  var campoCsrf = formulario ? formulario.querySelector('input[name="csrf"]') : null;
+  var subiendoImagen = false;
+
+  function textoAlternativo(valor) {
+    var limpio = String(valor || "").replace(/[\[\]\r\n]/g, " ").replace(/\s+/g, " ").trim();
+    if (!limpio) {
+      return "Imagen";
+    }
+    if (limpio.length > 200) {
+      return limpio.slice(0, 200).trim() || "Imagen";
+    }
+    return limpio;
+  }
+
+  function insertarLinea(marca) {
+    var inicio = cuadro.selectionStart;
+    var fin = cuadro.selectionEnd;
+    var texto = cuadro.value;
+    var antes = texto.slice(0, inicio).replace(/\n+$/, "");
+    var despues = texto.slice(fin).replace(/^\n+/, "");
+    var prefijo = antes === "" ? "" : "\n\n";
+    var sufijo = "\n\n";
+    cuadro.value = antes + prefijo + marca + sufijo + despues;
+    var cursor = antes.length + prefijo.length + marca.length + sufijo.length;
+    cuadro.focus();
+    cuadro.setSelectionRange(cursor, cursor);
+  }
+
+  function restaurarBotonImagen() {
+    subiendoImagen = false;
+    if (!botonImagen) {
+      return;
+    }
+    botonImagen.disabled = false;
+    var etiqueta = botonImagen.querySelector("span");
+    if (etiqueta) {
+      etiqueta.textContent = "Imagen";
+    }
+  }
+
+  function subirImagen(archivo) {
+    if (!campoCsrf || !campoCsrf.value) {
+      mostrarToast("La solicitud no es válida. Vuelve a cargar la página.");
+      return;
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      mostrarToast("La imagen puede pesar hasta 5 MB.");
+      return;
+    }
+    if (archivo.type === "image/svg+xml") {
+      mostrarToast("No se aceptan archivos SVG.");
+      return;
+    }
+
+    subiendoImagen = true;
+    if (botonImagen) {
+      botonImagen.disabled = true;
+      var etiqueta = botonImagen.querySelector("span");
+      if (etiqueta) {
+        etiqueta.textContent = "Subiendo…";
+      }
+    }
+
+    var datos = new FormData();
+    datos.append("csrf", campoCsrf.value);
+    datos.append("imagen", archivo);
+
+    fetch("articulo-imagen.php", {
+      method: "POST",
+      body: datos,
+      credentials: "same-origin"
+    }).then(function (respuesta) {
+      return respuesta.text().then(function (texto) {
+        var cuerpo;
+        try {
+          cuerpo = JSON.parse(texto);
+        } catch (error) {
+          throw new Error("No se pudo subir la imagen.");
+        }
+        if (!cuerpo || typeof cuerpo !== "object" || !respuesta.ok || !cuerpo.ok || typeof cuerpo.url !== "string") {
+          throw new Error((cuerpo && cuerpo.error) || "No se pudo subir la imagen.");
+        }
+        if (!/^\/img\/articulos\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(cuerpo.url)) {
+          throw new Error("No se pudo subir la imagen.");
+        }
+        return cuerpo.url;
+      });
+    }).then(function (url) {
+      restaurarBotonImagen();
+      var descripcion = window.prompt("Texto alternativo de la imagen");
+      insertarLinea("![" + textoAlternativo(descripcion) + "](" + url + ")");
+    }).catch(function (error) {
+      restaurarBotonImagen();
+      mostrarToast(error.message || "No se pudo subir la imagen.");
+    });
+  }
+
+  if (entradaImagen) {
+    entradaImagen.addEventListener("change", function () {
+      var archivo = entradaImagen.files && entradaImagen.files[0];
+      entradaImagen.value = "";
+      if (!archivo || subiendoImagen) {
+        return;
+      }
+      subirImagen(archivo);
+    });
+  }
+
   barra.addEventListener("click", function (evento) {
     var boton = evento.target.closest("button[data-marca]");
-    if (!boton) {
+    if (!boton || boton.disabled) {
       return;
     }
     var marca = boton.getAttribute("data-marca");
@@ -437,6 +636,10 @@
       lista();
     } else if (marca === "enlace") {
       enlace();
+    } else if (marca === "imagen") {
+      if (entradaImagen && !subiendoImagen) {
+        entradaImagen.click();
+      }
     }
   });
 })();
@@ -562,4 +765,177 @@
     }
   }, { threshold: 0.5 });
   observador.observe(franja);
+})();
+
+(function () {
+  var seccion = document.querySelector(".por-que-elegirnos");
+  if (!seccion || !("IntersectionObserver" in window)) {
+    return;
+  }
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  seccion.classList.add("preparada");
+  var observador = new IntersectionObserver(function (entradas) {
+    if (entradas.some(function (entrada) { return entrada.isIntersecting; })) {
+      observador.disconnect();
+      seccion.classList.add("animada");
+    }
+  }, { threshold: 0.35 });
+  observador.observe(seccion);
+})();
+
+function raizToasts() {
+  return document.querySelector("main.lienzo, main.contenido");
+}
+
+function listaToasts(raiz) {
+  if (!raiz) {
+    return [];
+  }
+  return Array.prototype.filter.call(raiz.children, function (hijo) {
+    return hijo.classList && hijo.classList.contains("aviso") && hijo.classList.contains("toast");
+  });
+}
+
+function mostrarToast(mensaje, tipo) {
+  var texto = String(mensaje || "").trim();
+  var raiz = raizToasts();
+  if (!texto || !raiz) {
+    return;
+  }
+  var toast = document.createElement("p");
+  toast.className = "aviso " + (tipo === "ok" ? "ok" : "error") + " toast";
+  toast.setAttribute("role", "status");
+  toast.textContent = texto;
+  var existentes = listaToasts(raiz);
+  var ancla = existentes.length ? existentes[existentes.length - 1].nextSibling : raiz.firstChild;
+  raiz.insertBefore(toast, ancla);
+  if (existentes.length) {
+    var movil = window.matchMedia("(max-width: 700px)").matches;
+    var base = movil ? 1.25 : 5.25;
+    var separacion = 0;
+    existentes.forEach(function (existente) {
+      separacion += existente.offsetHeight + 12;
+    });
+    toast.style.bottom = "calc(" + base + "rem + " + separacion + "px)";
+  }
+  window.setTimeout(function () {
+    toast.remove();
+  }, 6000);
+}
+
+(function () {
+  var raiz = raizToasts();
+  if (!raiz) {
+    return;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".aviso.toast"), function (toast) {
+    if (toast.parentElement !== raiz) {
+      raiz.insertBefore(toast, raiz.firstChild);
+    }
+  });
+  var toasts = listaToasts(raiz);
+  if (!toasts.length) {
+    return;
+  }
+  if (toasts.length > 1) {
+    var movil = window.matchMedia("(max-width: 700px)").matches;
+    var base = movil ? 1.25 : 5.25;
+    var separacion = 0;
+    toasts.forEach(function (toast) {
+      if (separacion > 0) {
+        toast.style.bottom = "calc(" + base + "rem + " + separacion + "px)";
+      }
+      separacion += toast.offsetHeight + 12;
+    });
+  }
+  window.setTimeout(function () {
+    toasts.forEach(function (toast) {
+      toast.remove();
+    });
+  }, 6000);
+})();
+
+(function () {
+  var tira = document.querySelector(".calendarios");
+  if (!tira) {
+    return;
+  }
+
+  function meses() {
+    return tira.querySelectorAll(".mes-calendario");
+  }
+
+  function indiceVisible() {
+    var ancho = tira.clientWidth || 1;
+    var indice = Math.round(tira.scrollLeft / ancho);
+    var ultimo = meses().length - 1;
+    return Math.max(0, Math.min(indice, ultimo));
+  }
+
+  var anterior = document.querySelector("[data-mes-anterior]");
+  var siguiente = document.querySelector("[data-mes-siguiente]");
+
+  function mostrar(indice) {
+    if (indice < 0 || indice >= meses().length) {
+      return;
+    }
+    tira.scrollLeft = indice * tira.clientWidth;
+    actualizarFlechas();
+  }
+
+  function actualizarFlechas() {
+    var indice = indiceVisible();
+    var ultimo = meses().length - 1;
+    if (anterior) {
+      anterior.disabled = indice <= 0;
+    }
+    if (siguiente) {
+      siguiente.disabled = indice >= ultimo;
+    }
+  }
+
+  var activo = tira.querySelector(".dia-link.activo");
+  if (activo) {
+    var mesActivo = activo.closest(".mes-calendario");
+    mostrar(Array.prototype.indexOf.call(meses(), mesActivo));
+  } else {
+    actualizarFlechas();
+  }
+
+  if (anterior) {
+    anterior.addEventListener("click", function () {
+      mostrar(indiceVisible() - 1);
+    });
+  }
+  if (siguiente) {
+    siguiente.addEventListener("click", function () {
+      mostrar(indiceVisible() + 1);
+    });
+  }
+
+  var ocupado = false;
+  tira.addEventListener("wheel", function (evento) {
+    var horizontal = Math.abs(evento.deltaX) > Math.abs(evento.deltaY);
+    var delta = horizontal ? evento.deltaX : evento.deltaY;
+    if (Math.abs(delta) < 4) {
+      return;
+    }
+    var destino = indiceVisible() + (delta > 0 ? 1 : -1);
+    if (destino < 0 || destino >= meses().length) {
+      return;
+    }
+    evento.preventDefault();
+    if (ocupado) {
+      return;
+    }
+    ocupado = true;
+    mostrar(destino);
+    window.setTimeout(function () {
+      ocupado = false;
+    }, 280);
+  }, { passive: false });
+  tira.addEventListener("scroll", actualizarFlechas);
 })();

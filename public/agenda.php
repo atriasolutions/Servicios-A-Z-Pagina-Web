@@ -43,14 +43,19 @@ $externasDia = array_values(array_filter(
     static fn (array $reserva): bool => $reserva['fecha'] === $fechaIso
 ));
 
+$avisosAgenda = [];
+if ($agenda['error'] !== null) {
+    $avisosAgenda[] = $agenda['error'];
+}
+if ($externas['error'] !== null) {
+    $avisosAgenda[] = $externas['error'];
+}
+erroresDe($avisosAgenda);
 abrirPagina('Agenda');
 ?>
 <section>
   <h1>Agenda de asesorías</h1>
   <p><?= e(textoHorario()) ?> Los cupos se administran en Kora. Aquí se ven los bloques publicados y las reservas hechas desde la página.</p>
-  <?php if ($agenda['error'] !== null): ?>
-    <p class="nota"><?= e($agenda['error']) ?></p>
-  <?php endif; ?>
   <?php if ($fechas !== []): ?>
     <div class="dias">
       <?php foreach ($fechas as $dia): ?>
@@ -93,11 +98,9 @@ abrirPagina('Agenda');
     <?php endif; ?>
 
     <h3>Reservas hechas en Kora</h3>
-    <?php if ($externas['error'] !== null): ?>
-      <p class="nota"><?= e($externas['error']) ?></p>
-    <?php elseif ($externasDia === []): ?>
+    <?php if ($externas['error'] === null && $externasDia === []): ?>
       <p class="nota">No hay otras reservas de Kora para este día.</p>
-    <?php else: ?>
+    <?php elseif ($externas['error'] === null): ?>
       <ul class="franjas">
         <?php foreach ($externasDia as $reserva): ?>
           <li class="franja reservado">

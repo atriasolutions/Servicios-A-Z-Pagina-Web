@@ -1,0 +1,9 @@
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "(?i)\.(php|phtml|phar)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>

@@ -43,6 +43,8 @@ $contacto = [
     'email' => '',
     'telefono' => '',
     'tipo_persona' => '',
+    'razon_social' => '',
+    'rut_empresa' => '',
 ];
 $erroresContacto = [];
 if (is_array($contactoPendiente)) {
@@ -52,6 +54,8 @@ if (is_array($contactoPendiente)) {
     $contacto['email'] = trim((string) ($guardados['email'] ?? ''));
     $contacto['telefono'] = trim((string) ($guardados['telefono'] ?? ''));
     $contacto['tipo_persona'] = (string) ($guardados['tipo_persona'] ?? '');
+    $contacto['razon_social'] = trim((string) ($guardados['razon_social'] ?? ''));
+    $contacto['rut_empresa'] = trim((string) ($guardados['rut_empresa'] ?? ''));
     foreach ((array) ($contactoPendiente['errores'] ?? []) as $error) {
         if (is_string($error) && $error !== '') {
             $erroresContacto[] = $error;
@@ -105,6 +109,7 @@ $slides = [
     ],
 ];
 
+erroresDe($erroresContacto);
 abrirPagina('Inicio', true);
 ?>
 <div class="zona-escritorio">
@@ -175,13 +180,14 @@ abrirPagina('Inicio', true);
   </ul>
 </section>
 
+<div class="bloque-servicios">
 <section id="servicios" class="servicios">
   <div class="seccion-inner">
     <h2>Nuestros servicios</h2>
     <div class="rejilla">
       <?php foreach (servicios() as $clave => $nombre): ?>
         <?php $info = $informacionServicios[$clave]; ?>
-        <article class="tarjeta-servicio vidrio">
+        <article class="tarjeta-servicio tarjeta-servicio--<?= e($clave) ?> vidrio">
           <?= icono($iconosServicio[$clave] ?? 'horarios') ?>
           <h3><?= e($nombre) ?></h3>
           <?php if ($info['descripcion'] !== ''): ?>
@@ -200,26 +206,25 @@ abrirPagina('Inicio', true);
     </div>
   </div>
 </section>
-</div>
 
 <section class="proceso" aria-labelledby="titulo-proceso">
   <div class="seccion-inner">
     <h2 id="titulo-proceso">Cómo reservar una asesoría</h2>
     <ol class="proceso-pasos">
       <li class="proceso-paso">
-        <h3>Elige el trámite</h3>
+        <h3><svg class="proceso-icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 6h9M8 12h9M8 18h9"/><circle cx="4.5" cy="6" r="1.05"/><circle cx="4.5" cy="12" r="1.05"/><circle cx="4.5" cy="18" r="1.05"/></svg>Elige el trámite</h3>
         <p>Selecciona el servicio sobre el que necesitas asesoría.</p>
       </li>
       <li class="proceso-paso">
-        <h3>Escoge día y hora</h3>
+        <h3><svg class="proceso-icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>Escoge día y hora</h3>
         <p>Revisa los horarios libres publicados en la agenda.</p>
       </li>
       <li class="proceso-paso">
-        <h3>Deja tus datos</h3>
+        <h3><svg class="proceso-icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3"/><path d="M6.5 19.2c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/></svg>Deja tus datos</h3>
         <p>Indica nombre, correo y teléfono. No necesitas crear una cuenta.</p>
       </li>
       <li class="proceso-paso">
-        <h3>Recibe la confirmación</h3>
+        <h3><svg class="proceso-icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="6" width="17" height="12" rx="1.8"/><path d="M4.2 7.2 12 13l7.8-5.8"/></svg>Recibe la confirmación</h3>
         <p>Revisamos tu solicitud y te avisamos por correo cuando la cita queda confirmada.</p>
       </li>
     </ol>
@@ -228,6 +233,8 @@ abrirPagina('Inicio', true);
     </div>
   </div>
 </section>
+</div>
+</div>
 
 <div class="zona-faro">
 <div class="fondo-equipo" aria-hidden="true"></div>
@@ -240,9 +247,18 @@ abrirPagina('Inicio', true);
       <p>Llevamos sus registros, preparamos sus estados financieros y le acompañamos en sus obligaciones contables, laborales y tributarias de forma mensual.</p>
     </div>
     <ul class="acerca-destacados">
-      <li class="vidrio"><strong>Más de 8 años</strong><span>de experiencia acompañando a pymes y emprendedores.</span></li>
-      <li class="vidrio"><strong>SII y DT</strong><span>orden fiscal y laboral ante ambas instituciones.</span></li>
-      <li class="vidrio"><strong>Remoto</strong><span>servicio personalizado, eficiente y cercano.</span></li>
+      <li class="vidrio">
+        <svg class="acerca-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5 10 17.5 19 7.5"/></svg>
+        <span class="acerca-texto"><strong>Más de 8 años</strong><span>de experiencia acompañando a pymes y emprendedores.</span></span>
+      </li>
+      <li class="vidrio">
+        <svg class="acerca-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5 10 17.5 19 7.5"/></svg>
+        <span class="acerca-texto"><strong>SII y DT</strong><span>orden fiscal y laboral ante ambas instituciones.</span></span>
+      </li>
+      <li class="vidrio">
+        <svg class="acerca-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5 10 17.5 19 7.5"/></svg>
+        <span class="acerca-texto"><strong>Remoto</strong><span>servicio personalizado, eficiente y cercano.</span></span>
+      </li>
     </ul>
   </div>
 </section>
@@ -251,19 +267,41 @@ abrirPagina('Inicio', true);
   <div class="seccion-inner">
     <h2 id="titulo-beneficios">Por qué elegirnos</h2>
     <div class="rejilla">
-      <article class="tarjeta-beneficio vidrio">
+      <article class="tarjeta-beneficio tarjeta-beneficio--tranquilidad vidrio">
+        <svg class="beneficio-icono beneficio-escudo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 3.2 19 5.8v6.1c0 4.2-2.8 7.2-7 8.9-4.2-1.7-7-4.7-7-8.9V5.8z"/>
+          <path class="visto" d="M8.2 12.2 10.7 14.7 15.8 9.5"/>
+        </svg>
         <h3>Tranquilidad</h3>
         <p>Mantenemos en orden sus obligaciones ante el SII y la Dirección del Trabajo.</p>
       </article>
-      <article class="tarjeta-beneficio vidrio">
+      <article class="tarjeta-beneficio tarjeta-beneficio--acompanamiento vidrio">
+        <svg class="beneficio-icono beneficio-calendario" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="4" y="5" width="16" height="15" rx="2"/>
+          <path d="M8 3v4M16 3v4M4 10h16"/>
+          <rect class="hoja" x="7.5" y="12.5" width="9" height="5" rx="0.8"/>
+        </svg>
         <h3>Acompañamiento mensual</h3>
         <p>Le acompañamos cada mes en lo contable, laboral y tributario.</p>
       </article>
-      <article class="tarjeta-beneficio vidrio">
+      <article class="tarjeta-beneficio tarjeta-beneficio--registros vidrio">
+        <svg class="beneficio-icono beneficio-documento" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M7 3.5h7.2L19 8.2V20.5H7z"/>
+          <path d="M14 3.8V8.4h4.6"/>
+          <path class="linea linea-1" d="M9.2 12.2h6.2"/>
+          <path class="linea linea-2" d="M9.2 15.2h6.2"/>
+          <path class="linea linea-3" d="M9.2 18.2h4"/>
+        </svg>
         <h3>Registros al día</h3>
         <p>Llevamos sus registros y preparamos sus estados financieros.</p>
       </article>
-      <article class="tarjeta-beneficio vidrio">
+      <article class="tarjeta-beneficio tarjeta-beneficio--remota vidrio">
+        <svg class="beneficio-icono beneficio-remoto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="3.5" y="4.5" width="17" height="12" rx="1.6"/>
+          <path d="M9 20.2h6M12 16.5v3.7"/>
+          <path class="onda onda-1" d="M9.6 8.6a3.2 3.2 0 0 1 4.8 0"/>
+          <path class="onda onda-2" d="M7.6 6.6a6.2 6.2 0 0 1 8.8 0"/>
+        </svg>
         <h3>Atención remota</h3>
         <p>Un servicio profesional y personalizado, con trato cercano y sin traslados.</p>
       </article>
@@ -301,6 +339,7 @@ abrirPagina('Inicio', true);
       <div class="carrusel-controles">
         <button type="button" class="boton secundario" data-carrusel-anterior>Anterior</button>
         <div class="carrusel-puntos" data-carrusel-puntos></div>
+        <span class="carrusel-contador" data-carrusel-contador aria-hidden="true"></span>
         <button type="button" class="boton secundario" data-carrusel-siguiente>Siguiente</button>
       </div>
     </div>
@@ -364,29 +403,10 @@ abrirPagina('Inicio', true);
     <div class="contacto-formulario">
       <h3>Solicite una asesoría</h3>
       <p>Complete el formulario y nos pondremos en contacto con usted.</p>
-      <?php erroresDe($erroresContacto); ?>
       <form class="formulario contacto-form" method="post" action="contacto.php">
         <?= campoCsrf() ?>
         <div class="trampa-contacto" aria-hidden="true">
           <label>Sitio web<input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label>
-        </div>
-        <div class="datos-reserva">
-          <label>
-            Nombre
-            <input type="text" name="nombre" required maxlength="120" autocomplete="given-name" value="<?= e($contacto['nombre']) ?>">
-          </label>
-          <label>
-            Apellido <span class="opcional">(opcional)</span>
-            <input type="text" name="apellido" maxlength="120" autocomplete="family-name" value="<?= e($contacto['apellido']) ?>">
-          </label>
-          <label>
-            Correo electrónico
-            <input type="email" name="email" required maxlength="190" autocomplete="email" value="<?= e($contacto['email']) ?>">
-          </label>
-          <label>
-            Teléfono
-            <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" value="<?= e($contacto['telefono']) ?>">
-          </label>
         </div>
         <fieldset class="tipo-persona">
           <legend>Tipo de Persona / Régimen</legend>
@@ -399,6 +419,33 @@ abrirPagina('Inicio', true);
             <?php endforeach; ?>
           </div>
         </fieldset>
+        <div class="datos-reserva">
+          <label>
+            <span data-etiqueta-nombre<?= $contacto['tipo_persona'] === 'empresa' ? ' hidden' : '' ?>>Nombre</span>
+            <span data-etiqueta-contacto<?= $contacto['tipo_persona'] === 'empresa' ? '' : ' hidden' ?>>Nombre de contacto</span>
+            <input type="text" name="nombre" required maxlength="120" autocomplete="given-name" value="<?= e($contacto['nombre']) ?>">
+          </label>
+          <label>
+            Apellido <span class="opcional">(opcional)</span>
+            <input type="text" name="apellido" maxlength="120" autocomplete="family-name" value="<?= e($contacto['apellido']) ?>">
+          </label>
+          <label data-campo-empresa<?= $contacto['tipo_persona'] === 'empresa' ? '' : ' hidden' ?>>
+            Razón social
+            <input type="text" name="razon_social" maxlength="200" autocomplete="organization" value="<?= e($contacto['razon_social']) ?>"<?= $contacto['tipo_persona'] === 'empresa' ? '' : ' disabled' ?>>
+          </label>
+          <label data-campo-empresa<?= $contacto['tipo_persona'] === 'empresa' ? '' : ' hidden' ?>>
+            RUT empresa
+            <input type="text" name="rut_empresa" maxlength="12" autocomplete="off" value="<?= e($contacto['rut_empresa']) ?>"<?= $contacto['tipo_persona'] === 'empresa' ? '' : ' disabled' ?>>
+          </label>
+          <label>
+            Correo electrónico
+            <input type="email" name="email" required maxlength="190" autocomplete="email" inputmode="email" placeholder="nombre@correo.cl" value="<?= e($contacto['email']) ?>">
+          </label>
+          <label>
+            Celular
+            <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" inputmode="tel" placeholder="+56 9 1234 5678" value="<?= e($contacto['telefono']) ?>">
+          </label>
+        </div>
         <button class="boton" type="submit">Enviar solicitud</button>
       </form>
     </div>

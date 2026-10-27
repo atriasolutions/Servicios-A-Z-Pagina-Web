@@ -7,26 +7,68 @@ function noticiasTributarias(): array
     $ajustes = configuracion()['noticias'] ?? [];
     $rss = is_array($ajustes) ? (string) ($ajustes['rss'] ?? '') : '';
     $horas = is_array($ajustes) ? max(1, (int) ($ajustes['cache_horas'] ?? 4)) : 4;
-    $limite = is_array($ajustes) ? max(1, min(9, (int) ($ajustes['limite'] ?? 9))) : 9;
-    $cache = dirname(__DIR__) . '/datos-cache/noticias-sii.json';
+    $limite = is_array($ajustes) ? max(1, min(24, (int) ($ajustes['limite'] ?? 24))) : 24;
+    $cache = dirname(__DIR__) . '/datos-cache/noticias-historial.json';
     $guardada = leerCacheNoticias($cache);
 
     if ($guardada !== null && (time() - $guardada['obtenido']) < ($horas * 3600)) {
-        return array_slice($guardada['items'], 0, $limite);
+        return array_slice(noticiasVigentes($guardada['items']), 0, $limite);
     }
 
     $nuevas = descargarNoticias($rss);
     if ($nuevas !== null) {
-        guardarCacheNoticias($cache, $nuevas);
+        $historial = fusionarNoticias($nuevas, $guardada['items'] ?? []);
+        guardarCacheNoticias($cache, $historial);
 
-        return array_slice($nuevas, 0, $limite);
+        return array_slice($historial, 0, $limite);
     }
 
     if ($guardada !== null) {
-        return array_slice($guardada['items'], 0, $limite);
+        return array_slice(noticiasVigentes($guardada['items']), 0, $limite);
     }
 
     return [];
+}
+
+function fusionarNoticias(array $nuevas, array $anteriores): array
+{
+    $porEnlace = [];
+    foreach ($nuevas as $noticia) {
+        if (is_array($noticia) && isset($noticia['enlace'])) {
+            $porEnlace[(string) $noticia['enlace']] = $noticia;
+        }
+    }
+
+    foreach ($anteriores as $noticia) {
+        if (!is_array($noticia) || !isset($noticia['enlace']) || (int) ($noticia['publicado'] ?? 0) <= 0) {
+            continue;
+        }
+        $enlace = (string) $noticia['enlace'];
+        if (!isset($porEnlace[$enlace])) {
+            $porEnlace[$enlace] = $noticia;
+        }
+    }
+
+    return noticiasVigentes(array_values($porEnlace));
+}
+
+function noticiasVigentes(array $items): array
+{
+    $desde = strtotime('-6 months');
+    $vigentes = array_values(array_filter($items, static function ($noticia) use ($desde): bool {
+        if (!is_array($noticia)) {
+            return false;
+        }
+        $publicado = (int) ($noticia['publicado'] ?? 0);
+
+        return $publicado === 0 || $publicado >= $desde;
+    }));
+
+    usort($vigentes, static function (array $a, array $b): int {
+        return ((int) ($b['publicado'] ?? 0)) <=> ((int) ($a['publicado'] ?? 0));
+    });
+
+    return $vigentes;
 }
 
 function leerCacheNoticias(string $ruta): ?array
@@ -148,8 +190,8 @@ function leerItemsRss(string $xml): ?array
 
     $items = [];
     foreach ($documento->getElementsByTagName('item') as $nodo) {
-        if (!$nodo instanceof DOMElement || count($items) >= 9) {
-            break;
+        if (!$nodo instanceof DOMElement) {
+            continue;
         }
 
         $titulo = textoDeItem($nodo, 'title');
@@ -159,9 +201,11 @@ function leerItemsRss(string $xml): ?array
         }
 
         $categoria = textoDeItem($nodo, 'category');
+        $publicado = fechaPublicada(textoDeItem($nodo, 'pubDate'));
         $items[] = [
             'titulo' => $titulo,
-            'fecha' => fechaDeNoticia(textoDeItem($nodo, 'pubDate')),
+            'fecha' => $publicado !== null ? fechaDeNoticia($publicado) : '',
+            'publicado' => $publicado !== null ? $publicado->getTimestamp() : 0,
             'extracto' => recortarNoticia(textoDeItem($nodo, 'description')),
             'enlace' => $enlace,
             'categoria' => $categoria !== '' ? $categoria : 'Actualidad tributaria',
@@ -223,22 +267,27 @@ function repararTexto(string $texto): string
     return $salida;
 }
 
-function fechaDeNoticia(string $publicacion): string
+function fechaPublicada(string $publicacion): ?DateTimeImmutable
 {
     $publicacion = trim($publicacion, " ,\t");
     if ($publicacion === '') {
-        return '';
+        return null;
     }
 
     $fecha = DateTimeImmutable::createFromFormat('j M Y H:i:s T', $publicacion);
-    if (!$fecha) {
-        try {
-            $fecha = new DateTimeImmutable($publicacion);
-        } catch (Exception $e) {
-            return '';
-        }
+    if ($fecha) {
+        return $fecha;
     }
 
+    try {
+        return new DateTimeImmutable($publicacion);
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+function fechaDeNoticia(DateTimeImmutable $fecha): string
+{
     $meses = [
         1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',

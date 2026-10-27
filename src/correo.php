@@ -391,14 +391,21 @@ function notificarContacto(array $datos): bool
     $sitio = (string) configuracion()['sitio']['nombre'];
     $cliente = nombreCliente((string) ($datos['nombre'] ?? ''), (string) ($datos['apellido'] ?? ''));
 
+    $empresa = ($datos['tipo_persona'] ?? null) === 'empresa';
+    $cuerpo = "Hay una solicitud de contacto en {$sitio}.\n\n"
+        . ($empresa ? 'Nombre de contacto: ' : 'Nombre: ') . $cliente . "\n"
+        . 'Tipo de persona o régimen: ' . etiquetaTipoPersona($datos['tipo_persona'] ?? null) . "\n";
+    if ($empresa) {
+        $cuerpo .= 'Razón social: ' . ($datos['razon_social'] ?? '') . "\n"
+            . 'RUT empresa: ' . ($datos['rut_empresa'] ?? '') . "\n";
+    }
+    $cuerpo .= 'Correo: ' . ($datos['email'] ?? '') . "\n"
+        . 'Teléfono: ' . ($datos['telefono'] ?? '') . "\n";
+
     return enviarCorreo(
         $administrador,
         'Solicitud de contacto',
-        "Hay una solicitud de contacto en {$sitio}.\n\n"
-            . 'Nombre: ' . $cliente . "\n"
-            . 'Tipo de persona o régimen: ' . etiquetaTipoPersona($datos['tipo_persona'] ?? null) . "\n"
-            . 'Correo: ' . ($datos['email'] ?? '') . "\n"
-            . 'Teléfono: ' . ($datos['telefono'] ?? '') . "\n",
+        $cuerpo,
         (string) ($datos['email'] ?? '')
     );
 }

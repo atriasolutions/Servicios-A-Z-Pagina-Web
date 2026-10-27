@@ -28,6 +28,8 @@ $datos = [
     'email' => normalizarEmail((string) ($_POST['email'] ?? '')),
     'telefono' => trim((string) ($_POST['telefono'] ?? '')),
     'tipo_persona' => tipoPersonaValido((string) ($_POST['tipo_persona'] ?? '')),
+    'razon_social' => trim((string) ($_POST['razon_social'] ?? '')),
+    'rut_empresa' => trim((string) ($_POST['rut_empresa'] ?? '')),
 ];
 
 $volver = 'horarios.php';
@@ -44,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($servicio === null) {
         $errores[] = 'Elige un tipo de trámite.';
     } else {
-        $validacion = validarClienteReserva($datos);
+        $validacion = validarContacto($datos);
         $datos = $validacion['datos'];
         $errores = $validacion['errores'];
 
@@ -73,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+if ($agenda['error'] !== null) {
+    $errores[] = $agenda['error'];
+}
+erroresDe($errores);
 abrirPagina('Horarios');
 ?>
 <section>
@@ -116,35 +122,75 @@ abrirPagina('Horarios');
       <?php endif; ?>
     </div>
     <p><?= e(textoHorario()) ?> Enviaremos tu solicitud para revisión y te avisaremos por correo cuando sea confirmada.</p>
-    <?php if ($agenda['error'] !== null): ?>
-      <p class="nota"><?= e($agenda['error']) ?></p>
-    <?php endif; ?>
-    <?php erroresDe($errores); ?>
     <div class="reserva-layout">
     <div class="tramites">
       <?php foreach (servicios() as $clave => $nombre): ?>
         <a class="tramite<?= $clave === $servicio ? ' activo' : '' ?>" href="horarios.php?fecha=<?= e($fechaIso) ?>&amp;servicio=<?= e($clave) ?>"><?= e($nombre) ?></a>
       <?php endforeach; ?>
     </div>
-    <div class="dias">
-      <?php foreach ($agenda['fechas'] as $dia): ?>
+    <div class="calendario-paginas">
+    <button type="button" class="boton secundario mes-flecha" data-mes-anterior aria-label="Mes anterior">Mes anterior</button>
+    <div class="calendarios" tabindex="0" aria-label="Calendario por mes">
+      <?php
+        $nombresMes = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+        $cuposPorDia = [];
+        $meses = [];
+        foreach ($agenda['fechas'] as $dia) {
+            $iso = $dia->format('Y-m-d');
+            $cantidad = 0;
+            foreach (koraBloquesDelDia($dia, $agenda['bloques']) as $bloque) {
+                if ($bloque['estado'] === 'libre') {
+                    $cantidad++;
+                }
+            }
+            $cuposPorDia[$iso] = $cantidad;
+            $claveMes = $dia->format('Y-m');
+            if (!isset($meses[$claveMes])) {
+                $meses[$claveMes] = $dia->modify('first day of this month');
+            }
+        }
+      ?>
+      <?php foreach ($meses as $inicioMes): ?>
         <?php
-          $iso = $dia->format('Y-m-d');
-          $cantidad = 0;
-          foreach (koraBloquesDelDia($dia, $agenda['bloques']) as $bloque) {
-              if ($bloque['estado'] === 'libre') {
-                  $cantidad++;
-              }
-          }
-          $clase = $iso === $fechaIso ? 'dia-link activo' : 'dia-link';
-          $cupo = $cantidad === 0 ? 'sin cupo' : $cantidad . ' libres';
+          $diasDelMes = (int) $inicioMes->format('t');
+          $huecos = ((int) $inicioMes->format('w') + 6) % 7;
         ?>
-        <a class="<?= e($clase) ?>" href="horarios.php?fecha=<?= e($iso) ?>&amp;servicio=<?= e($servicio) ?>"<?= $iso === $fechaIso ? ' aria-current="date"' : '' ?>>
-          <span><?= e(fechaCorta($dia)) ?></span>
-          <strong><?= e($dia->format('j')) ?></strong>
-          <small><?= e($cupo) ?></small>
-        </a>
+        <section class="mes-calendario" aria-label="<?= e($nombresMes[(int) $inicioMes->format('n')] . ' ' . $inicioMes->format('Y')) ?>">
+          <h2 class="mes-titulo"><?= e($nombresMes[(int) $inicioMes->format('n')] . ' ' . $inicioMes->format('Y')) ?></h2>
+          <div class="mes-semana" aria-hidden="true">
+            <span>lun</span><span>mar</span><span>mié</span><span>jue</span><span>vie</span><span>sáb</span><span>dom</span>
+          </div>
+          <div class="mes-dias">
+            <?php for ($hueco = 0; $hueco < $huecos; $hueco++): ?>
+              <span class="dia-hueco"></span>
+            <?php endfor; ?>
+            <?php for ($numero = 1; $numero <= $diasDelMes; $numero++): ?>
+              <?php
+                $diaMes = $inicioMes->setDate((int) $inicioMes->format('Y'), (int) $inicioMes->format('n'), $numero);
+                $iso = $diaMes->format('Y-m-d');
+              ?>
+              <?php if (!array_key_exists($iso, $cuposPorDia)): ?>
+                <span class="dia-apagado"><?= e((string) $numero) ?></span>
+              <?php else: ?>
+                <?php
+                  $cantidad = $cuposPorDia[$iso];
+                  $cupo = $cantidad === 0 ? 'sin cupo' : $cantidad . ' libres';
+                ?>
+                <a class="dia-link<?= $iso === $fechaIso ? ' activo' : '' ?>" href="horarios.php?fecha=<?= e($iso) ?>&amp;servicio=<?= e($servicio) ?>"<?= $iso === $fechaIso ? ' aria-current="date"' : '' ?>>
+                  <strong><?= e((string) $numero) ?></strong>
+                  <small><?= e($cupo) ?></small>
+                </a>
+              <?php endif; ?>
+            <?php endfor; ?>
+          </div>
+        </section>
       <?php endforeach; ?>
+    </div>
+    <button type="button" class="boton secundario mes-flecha" data-mes-siguiente aria-label="Mes siguiente">Mes siguiente</button>
     </div>
 
     <?php if ($fecha): ?>
@@ -157,24 +203,7 @@ abrirPagina('Horarios');
         <?= campoCsrf() ?>
         <input type="hidden" name="fecha" value="<?= e($fechaIso) ?>">
         <input type="hidden" name="servicio" value="<?= e($servicio) ?>">
-        <div class="datos-reserva">
-          <label>
-            Nombre
-            <input type="text" name="nombre" required maxlength="120" autocomplete="given-name" value="<?= e($datos['nombre']) ?>">
-          </label>
-          <label>
-            Apellido <span class="opcional">(opcional)</span>
-            <input type="text" name="apellido" maxlength="120" autocomplete="family-name" value="<?= e($datos['apellido']) ?>">
-          </label>
-          <label>
-            Correo electrónico
-            <input type="email" name="email" required maxlength="190" autocomplete="email" value="<?= e($datos['email']) ?>">
-          </label>
-          <label>
-            Teléfono
-            <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" value="<?= e($datos['telefono']) ?>">
-          </label>
-        </div>
+        <?php $esEmpresa = ($datos['tipo_persona'] ?? '') === 'empresa'; ?>
         <fieldset class="tipo-persona">
           <legend>Tipo de Persona / Régimen</legend>
           <div class="opciones-tipo-persona">
@@ -186,6 +215,33 @@ abrirPagina('Horarios');
             <?php endforeach; ?>
           </div>
         </fieldset>
+        <div class="datos-reserva">
+          <label>
+            <span data-etiqueta-nombre<?= $esEmpresa ? ' hidden' : '' ?>>Nombre</span>
+            <span data-etiqueta-contacto<?= $esEmpresa ? '' : ' hidden' ?>>Nombre de contacto</span>
+            <input type="text" name="nombre" required maxlength="120" autocomplete="given-name" value="<?= e($datos['nombre']) ?>">
+          </label>
+          <label>
+            Apellido <span class="opcional">(opcional)</span>
+            <input type="text" name="apellido" maxlength="120" autocomplete="family-name" value="<?= e($datos['apellido']) ?>">
+          </label>
+          <label data-campo-empresa<?= $esEmpresa ? '' : ' hidden' ?>>
+            Razón social
+            <input type="text" name="razon_social" maxlength="200" autocomplete="organization" value="<?= e($datos['razon_social']) ?>"<?= $esEmpresa ? '' : ' disabled' ?>>
+          </label>
+          <label data-campo-empresa<?= $esEmpresa ? '' : ' hidden' ?>>
+            RUT empresa
+            <input type="text" name="rut_empresa" maxlength="12" autocomplete="off" value="<?= e($datos['rut_empresa']) ?>"<?= $esEmpresa ? '' : ' disabled' ?>>
+          </label>
+          <label>
+            Correo electrónico
+            <input type="email" name="email" required maxlength="190" autocomplete="email" inputmode="email" placeholder="nombre@correo.cl" value="<?= e($datos['email']) ?>">
+          </label>
+          <label>
+            Celular
+            <input type="tel" name="telefono" required maxlength="40" autocomplete="tel" inputmode="tel" placeholder="+56 9 1234 5678" value="<?= e($datos['telefono']) ?>">
+          </label>
+        </div>
         <fieldset>
           <legend>Elige una hora</legend>
           <div class="grilla">
